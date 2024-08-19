@@ -1,9 +1,9 @@
-import requests
-from bs4 import BeautifulSoup
-import json
+import requests #to get the url of a certain website
+from bs4 import BeautifulSoup #to scrape websites
+import json #To save file as json, or iport json file
 from dataclasses import dataclass, asdict
 from typing import List, Optional
-import concurrent.futures # a library to spped up the process of scraping articles
+import concurrent.futures #Alibrary to speed up the process of scraping
 import re
 
 @dataclass
@@ -27,7 +27,7 @@ class ArticleScraper:
     def __init__(self):
         self.session = requests.Session()
 
-    def fetch_article(self, url: str, article_limit_reached: List[bool]) -> Optional[Article]:#A function to break down the article's metadata inorder to store it
+    def fetch_article(self, url: str, article_limit_reached: List[bool]) -> Optional[Article]:
         if article_limit_reached[0]:
             return None
 
@@ -59,7 +59,6 @@ class ArticleScraper:
 
         print(f"Finished: {url}")
 
-        # Mark limit as reached if the limit is exceeded in this call
         return Article(
             url=url,
             postid=postid,
@@ -113,7 +112,7 @@ class ArticleScraper:
         urls = [loc.get_text() for loc in soup.find_all('loc')]
         return urls
 
-class FileUtility: # a class to save the file and the data
+class FileUtility:
     @staticmethod
     def save_articles(articles: List[Article], year: int, month: int):
         filename = f"articles_{year}_{month:02d}.json"
@@ -121,10 +120,9 @@ class FileUtility: # a class to save the file and the data
             articles_dict = [asdict(article) for article in articles]
             json.dump(articles_dict, f, ensure_ascii=False, indent=4)
 
-def main(year: int, article_limit: int):# the main method that initiates the process
+def main(year: int, article_limit: int):
     article_scraper = ArticleScraper()
     total_articles = 0
-    all_articles = []
     article_limit_reached = [False]
 
     # Parse the main sitemap to get all the month links
@@ -143,6 +141,7 @@ def main(year: int, article_limit: int):# the main method that initiates the pro
             break
 
         month = int(sitemap_url.split('-')[-1].replace('.xml', ''))
+        all_articles = []
 
         article_urls = article_scraper.parse_sitemap(sitemap_url)
         print(f"Found {len(article_urls)} article URLs for {year}-{month:02d}. Starting to scrape...")
@@ -164,16 +163,13 @@ def main(year: int, article_limit: int):# the main method that initiates the pro
                 except Exception as e:
                     print(f"Error fetching article from {future_to_url[future]}: {e}")
 
-        if article_limit_reached[0]:
-            break
-
-    if all_articles:
-        FileUtility.save_articles(all_articles, year, month)
-        print(f"Scraping complete for {year}-{month:02d}. {len(all_articles)} articles saved.")
+        if all_articles:
+            FileUtility.save_articles(all_articles, year, month)
+            print(f"Scraping complete for {year}-{month:02d}. {len(all_articles)} articles saved.")
 
     print(f"Total {total_articles} articles scraped and saved.")
 
 if __name__ == "__main__":
-    year = 2024  # Set the year to scrape
-    article_limit = 5  # The number of articles to be scraped
+    year = 2023  # Set the year to scrape
+    article_limit = 11000  # Set the total number of articles to scrape
     main(year, article_limit)
