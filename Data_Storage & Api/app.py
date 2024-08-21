@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from bson import ObjectId
-from bson.json_util import dumps, loads
 from datetime import datetime, timedelta
 
 # Start the Flask app
@@ -206,89 +205,93 @@ def popular_keywords_last_X_days(days):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=int(days))
     pipeline = [
-        {"$match": {"publication_date": {"$gte": start_date}}},
+        {"$match": {"publication_date": {"$gte": start_date, "$lte": end_date}}},
         {"$unwind": "$keywords"},
         {"$group": {"_id": "$keywords", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    results = list(collection.aggregate(pipeline))
-    return jsonify(serialize_document(results))
-
-# Endpoint 21: Articles by Published Month
-@app.route('/articles_by_month/<year>/<month>', methods=['GET'])
-def articles_by_month(year, month):
-    results = list(collection.find({"publication_date": {"$regex": f"^{year}-{month}"}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 22: Articles by Word Count Range
-@app.route('/articles_by_word_count_range/<min>/<max>', methods=['GET'])
-def articles_by_word_count_range(min, max):
-    results = list(collection.find({"word_count": {"$gte": int(min), "$lte": int(max)}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 23: Articles with Specific Keyword Count
-@app.route('/articles_with_specific_keyword_count/<count>', methods=['GET'])
-def articles_with_specific_keyword_count(count):
-    results = list(collection.find({"keyword_count": int(count)}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 24: Articles by Specific Date
-@app.route('/articles_by_specific_date/<date>', methods=['GET'])
-def articles_by_specific_date(date):
-    results = list(collection.find({"publication_date": date}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 25: Articles Containing Specific Text
-@app.route('/articles_containing_text/<text>', methods=['GET'])
-def articles_containing_text(text):
-    results = list(collection.find({"content": {"$regex": text}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 26: Articles with More than N Words
-@app.route('/articles_with_more_than/<word_count>', methods=['GET'])
-def articles_with_more_than(word_count):
-    results = list(collection.find({"word_count": {"$gt": int(word_count)}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 27: Articles Grouped by Coverage
-@app.route('/articles_grouped_by_coverage', methods=['GET'])
-def articles_grouped_by_coverage():
-    pipeline = [
-        {"$unwind": "$classes"},
-        {"$group": {"_id": "$classes", "count": {"$sum": 1}}}
-    ]
-    results = list(collection.aggregate(pipeline))
-    return jsonify(serialize_document(results))
-
-# Endpoint 28: Articles Published in Last X Hours
-@app.route('/articles_last_X_hours/<hours>', methods=['GET'])
-def articles_last_X_hours(hours):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(hours=int(hours))
-    results = list(collection.find({"publication_date": {"$gte": start_date}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 29: Articles by Length of Title
-@app.route('/articles_by_title_length', methods=['GET'])
-def articles_by_title_length():
-    pipeline = [
-        {"$project": {"title_length": {"$strLenCP": "$title"}}},
-        {"$group": {"_id": "$title_length", "count": {"$sum": 1}}},
-        {"$sort": {"_id": 1}}
-    ]
-    results = list(collection.aggregate(pipeline))
-    return jsonify(serialize_document(results))
-
-# Endpoint 30: Most Updated Articles
-@app.route('/most_updated_articles', methods=['GET'])
-def most_updated_articles():
-    pipeline = [
-        {"$sort": {"update_count": -1}},
+        {"$sort": {"count": -1}},
         {"$limit": 10}
     ]
     results = list(collection.aggregate(pipeline))
     return jsonify(serialize_document(results))
 
-# Run the Flask application
+# Endpoint 21: Article Statistics by Month and Year
+@app.route('/articles_by_month/<year>/<month>', methods=['GET'])
+def articles_by_month(year, month):
+    regex = f"^{year}-{month:02d}"
+    results = list(collection.find({"publication_date": {"$regex": regex}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 22: Articles by Word Count Range
+@app.route('/articles_by_word_count_range/<int:min_count>/<int:max_count>', methods=['GET'])
+def articles_by_word_count_range(min_count, max_count):
+    results = list(collection.find({"word_count": {"$gte": min_count, "$lte": max_count}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 23: Articles by Keyword Count Range
+@app.route('/articles_by_keyword_count_range/<int:min_count>/<int:max_count>', methods=['GET'])
+def articles_by_keyword_count_range(min_count, max_count):
+    pipeline = [
+        {"$project": {"keyword_count": {"$size": "$keywords"}}},
+        {"$match": {"keyword_count": {"$gte": min_count, "$lte": max_count}}}
+    ]
+    results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
+# Endpoint 24: Articles Containing Videos Longer Than X Minutes
+@app.route('/articles_with_video_duration_gt/<int:minutes>', methods=['GET'])
+def articles_with_video_duration_gt(minutes):
+    seconds = minutes * 60
+    results = list(collection.find({"video_duration": {"$gt": seconds}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 25: Articles with Word Count Above X
+@app.route('/articles_with_word_count_gt/<int:word_count>', methods=['GET'])
+def articles_with_word_count_gt(word_count):
+    results = list(collection.find({"word_count": {"$gt": word_count}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 26: Articles Published on Specific Day
+@app.route('/articles_on_date/<date>', methods=['GET'])
+def articles_on_date(date):
+    results = list(collection.find({"publication_date": date}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 27: Articles Containing Specific Word in Title
+@app.route('/articles_with_word_in_title/<word>', methods=['GET'])
+def articles_with_word_in_title(word):
+    regex = f".*{word}.*"
+    results = list(collection.find({"title": {"$regex": regex, "$options": "i"}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 28: Articles Grouped by Month
+@app.route('/articles_grouped_by_month', methods=['GET'])
+def articles_grouped_by_month():
+    pipeline = [
+        {"$group": {"_id": {"year": {"$year": "$publication_date"}, "month": {"$month": "$publication_date"}}, "count": {"$sum": 1}}},
+        {"$sort": {"_id.year": 1, "_id.month": 1}}
+    ]
+    results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
+# Endpoint 29: Average Word Count by Author
+@app.route('/average_word_count_by_author', methods=['GET'])
+def average_word_count_by_author():
+    pipeline = [
+        {"$group": {"_id": "$author", "average_word_count": {"$avg": "$word_count"}}},
+        {"$sort": {"average_word_count": -1}}
+    ]
+    results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
+# Endpoint 30: Articles by Title Length
+@app.route('/articles_by_title_length/<int:length>', methods=['GET'])
+def articles_by_title_length(length):
+    pipeline = [
+        {"$project": {"title_length": {"$strLenCP": "$title"}}},
+        {"$match": {"title_length": length}}
+    ]
+    results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
 if __name__ == '__main__':
     app.run(debug=True)
