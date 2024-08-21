@@ -170,6 +170,6 @@ def main(year: int, article_limit: int):
     print(f"Total {total_articles} articles scraped and saved.")
 
 if __name__ == "__main__":
-    year = 2023  # Set the year to scrape
+    year = 2024  # Set the year to scrape
     article_limit = 11000  # Set the total number of articles to scrape
     main(year, article_limit)
