@@ -20,6 +20,8 @@ def serialize_document(document):
         for key, value in document.items():
             if isinstance(value, ObjectId):
                 serialized[key] = str(value)
+            elif isinstance(value, datetime):
+                serialized[key] = value.isoformat()
             elif isinstance(value, dict) or isinstance(value, list):
                 serialized[key] = serialize_document(value)
             else:
@@ -59,7 +61,7 @@ def top_authors():
 @app.route('/articles_by_date', methods=['GET'])
 def articles_by_date():
     pipeline = [
-        {"$group": {"_id": "$publication_date", "count": {"$sum": 1}}},
+        {"$group": {"_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$publication_date"}}, "count": {"$sum": 1}}},
         {"$sort": {"_id": 1}}
     ]
     results = list(collection.aggregate(pipeline))
@@ -79,7 +81,8 @@ def articles_by_word_count():
 @app.route('/articles_by_language', methods=['GET'])
 def articles_by_language():
     pipeline = [
-        {"$group": {"_id": "$language", "count": {"$sum": 1}}}
+        {"$group": {"_id": "$language", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
     ]
     results = list(collection.aggregate(pipeline))
     return jsonify(serialize_document(results))
@@ -144,7 +147,8 @@ def articles_with_video():
 # Endpoint 13: Articles by Publication Year
 @app.route('/articles_by_year/<year>', methods=['GET'])
 def articles_by_year(year):
-    results = list(collection.find({"publication_date": {"$regex": f"^{year}"}}))
+    regex = f"^{year}"
+    results = list(collection.find({"publication_date": {"$regex": regex}}))
     return jsonify(serialize_document(results))
 
 # Endpoint 14: Longest Articles
@@ -217,7 +221,7 @@ def popular_keywords_last_X_days(days):
 # Endpoint 21: Article Statistics by Month and Year
 @app.route('/articles_by_month/<year>/<month>', methods=['GET'])
 def articles_by_month(year, month):
-    regex = f"^{year}-{month:02d}"
+    regex = f"^{year}-{int(month):02d}"
     results = list(collection.find({"publication_date": {"$regex": regex}}))
     return jsonify(serialize_document(results))
 
@@ -232,65 +236,80 @@ def articles_by_word_count_range(min_count, max_count):
 def articles_by_keyword_count_range(min_count, max_count):
     pipeline = [
         {"$project": {"keyword_count": {"$size": "$keywords"}}},
-        {"$match": {"keyword_count": {"$gte": min_count, "$lte": max_count}}}
+        {"$match": {"keyword_count": {"$gte": min_count, "$lte": max_count}}},
     ]
     results = list(collection.aggregate(pipeline))
     return jsonify(serialize_document(results))
 
-# Endpoint 24: Articles Containing Videos Longer Than X Minutes
-@app.route('/articles_with_video_duration_gt/<int:minutes>', methods=['GET'])
-def articles_with_video_duration_gt(minutes):
-    seconds = minutes * 60
-    results = list(collection.find({"video_duration": {"$gt": seconds}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 25: Articles with Word Count Above X
-@app.route('/articles_with_word_count_gt/<int:word_count>', methods=['GET'])
-def articles_with_word_count_gt(word_count):
-    results = list(collection.find({"word_count": {"$gt": word_count}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 26: Articles Published on Specific Day
-@app.route('/articles_on_date/<date>', methods=['GET'])
-def articles_on_date(date):
-    results = list(collection.find({"publication_date": date}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 27: Articles Containing Specific Word in Title
-@app.route('/articles_with_word_in_title/<word>', methods=['GET'])
-def articles_with_word_in_title(word):
-    regex = f".*{word}.*"
-    results = list(collection.find({"title": {"$regex": regex, "$options": "i"}}))
-    return jsonify(serialize_document(results))
-
-# Endpoint 28: Articles Grouped by Month
-@app.route('/articles_grouped_by_month', methods=['GET'])
-def articles_grouped_by_month():
+# Endpoint 24: Articles by Thumbnail and Keyword Count
+@app.route('/articles_by_thumbnail_and_keyword_count/<int:min_keyword_count>', methods=['GET'])
+def articles_by_thumbnail_and_keyword_count(min_keyword_count):
     pipeline = [
-        {"$group": {"_id": {"year": {"$year": "$publication_date"}, "month": {"$month": "$publication_date"}}, "count": {"$sum": 1}}},
-        {"$sort": {"_id.year": 1, "_id.month": 1}}
+        {"$match": {"thumbnail": {"$ne": None}}},
+        {"$project": {"keyword_count": {"$size": "$keywords"}, "thumbnail": 1, "title": 1}},
+        {"$match": {"keyword_count": {"$gte": min_keyword_count}}}
     ]
     results = list(collection.aggregate(pipeline))
     return jsonify(serialize_document(results))
 
-# Endpoint 29: Average Word Count by Author
-@app.route('/average_word_count_by_author', methods=['GET'])
-def average_word_count_by_author():
+# Endpoint 25: Articles Containing Certain Keywords
+@app.route('/articles_containing_keywords', methods=['POST'])
+def articles_containing_keywords():
+    keywords = request.json.get('keywords', [])
+    results = list(collection.find({"keywords": {"$in": keywords}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 26: Articles by Author and Keyword Count
+@app.route('/articles_by_author_and_keyword_count/<author>/<int:min_keyword_count>', methods=['GET'])
+def articles_by_author_and_keyword_count(author, min_keyword_count):
     pipeline = [
-        {"$group": {"_id": "$author", "average_word_count": {"$avg": "$word_count"}}},
-        {"$sort": {"average_word_count": -1}}
+        {"$match": {"author": author}},
+        {"$project": {"keyword_count": {"$size": "$keywords"}, "author": 1, "title": 1}},
+        {"$match": {"keyword_count": {"$gte": min_keyword_count}}}
     ]
     results = list(collection.aggregate(pipeline))
     return jsonify(serialize_document(results))
 
-# Endpoint 30: Articles by Title Length
-@app.route('/articles_by_title_length/<int:length>', methods=['GET'])
-def articles_by_title_length(length):
+# Endpoint 27: Articles by Keyword and Word Count
+@app.route('/articles_by_keyword_and_word_count/<keyword>/<int:min_word_count>', methods=['GET'])
+def articles_by_keyword_and_word_count(keyword, min_word_count):
     pipeline = [
-        {"$project": {"title_length": {"$strLenCP": "$title"}}},
-        {"$match": {"title_length": length}}
+        {"$match": {"keywords": keyword}},
+        {"$match": {"word_count": {"$gte": min_word_count}}},
+        {"$sort": {"word_count": -1}}
     ]
     results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
+# Endpoint 28: Articles by Date and Keyword
+@app.route('/articles_by_date_and_keyword/<date>/<keyword>', methods=['GET'])
+def articles_by_date_and_keyword(date, keyword):
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    pipeline = [
+        {"$match": {"publication_date": {"$eq": date_obj}, "keywords": keyword}}
+    ]
+    results = list(collection.aggregate(pipeline))
+    return jsonify(serialize_document(results))
+
+# Endpoint 29: Articles by Video Duration Range
+@app.route('/articles_by_video_duration_range/<int:min_duration>/<int:max_duration>', methods=['GET'])
+def articles_by_video_duration_range(min_duration, max_duration):
+    results = list(collection.find({"video_duration": {"$gte": min_duration, "$lte": max_duration}}))
+    return jsonify(serialize_document(results))
+
+# Endpoint 30: Articles by Last Updated Range
+@app.route('/articles_by_last_updated_range/<start_date>/<end_date>', methods=['GET'])
+def articles_by_last_updated_range(start_date, end_date):
+    try:
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+    results = list(collection.find({"last_updated": {"$gte": start_date_obj, "$lte": end_date_obj}}))
     return jsonify(serialize_document(results))
 
 if __name__ == '__main__':
