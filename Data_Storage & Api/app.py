@@ -107,8 +107,24 @@ def articles_by_classes():
 # 7. Recent Articles
 @app.route('/recent_articles', methods=['GET'])
 def recent_articles():
-    result = list(collection.find().sort("published_time", -1).limit(10))
-    return jsonify(result)
+    try:
+        # Find the most recent 10 articles sorted by published_time in descending order
+        result = list(collection.find().sort("published_time", -1).limit(10))
+
+        # Convert ObjectId to string for JSON serialization and format the result
+        for article in result:
+            if '_id' in article:
+                article['_id'] = str(article['_id'])
+
+        # Check if the result is empty
+        if not result:
+            return jsonify({"message": "No recent articles found"}), 404
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
 
 # 8. Articles by Keyword
 @app.route('/articles_by_keyword/<keyword>', methods=['GET'])
