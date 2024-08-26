@@ -1,9 +1,9 @@
-import requests #to get the url of a certain website
-from bs4 import BeautifulSoup #to scrape websites
-import json #To save file as json, or iport json file
+import requests
+from bs4 import BeautifulSoup
+import json
 from dataclasses import dataclass, asdict
 from typing import List, Optional
-import concurrent.futures #Alibrary to speed up the process of scraping
+import concurrent.futures
 import re
 
 @dataclass
@@ -13,15 +13,15 @@ class Article:
     title: str
     keywords: List[str]
     thumbnail: Optional[str]
-    published_time: str
-    last_updated: str
-    author: str
+    published_time: Optional[str]
+    last_updated: Optional[str]
+    author: Optional[str]
     word_count: int
     video_duration: Optional[str]
-    lang: str
-    description: str
+    lang: Optional[str]
+    description: Optional[str]
     classes: List[dict]
-    full_text: str
+    full_text: Optional[str]
 
 class ArticleScraper:
     def __init__(self):
@@ -44,18 +44,22 @@ class ArticleScraper:
 
         postid = self.extract_post_id(metadata, url)
 
-        title = metadata.get('title') or 'Default Title'
-        keywords = [k.strip() for k in metadata.get('keywords', '').split(',')] if metadata.get('keywords') else ['Default Keyword']
-        thumbnail = metadata.get('thumbnail') or 'Default Thumbnail'
-        published_time = metadata.get('publication_date') or self.extract_date_from_html(soup, 'published_time') or '2024-01-01T00:00:00Z'
-        last_updated = metadata.get('last_updated_date') or self.extract_date_from_html(soup, 'last_updated') or published_time
-        author = metadata.get('author') or 'Default Author'
+        title = metadata.get('title') or self.extract_title_from_html(soup)
+        keywords = [k.strip() for k in metadata.get('keywords', '').split(',')] if metadata.get('keywords') else self.extract_keywords_from_html(soup)
+        thumbnail = metadata.get('thumbnail') or self.extract_thumbnail_from_html(soup)
+        published_time = metadata.get('publication_date') or self.extract_date_from_html(soup, 'published_time')
+        last_updated = metadata.get('last_updated_date') or self.extract_date_from_html(soup, 'last_updated')
+        author = metadata.get('author') or self.extract_author_from_html(soup)
         word_count = int(metadata.get('word_count') or len(self.extract_full_text(soup).split()))
-        video_duration = None
-        lang = metadata.get('language') or self.detect_language(soup) or 'en'
-        description = metadata.get('description') or 'Default Description'
-        classes = metadata.get('classes') or [{'class_name': 'Default Class'}]
-        full_text = self.extract_full_text(soup) or 'Default Full Text'
+        video_duration = None  # Assuming no video data if not provided
+        lang = metadata.get('language') or self.detect_language(soup)
+        description = metadata.get('description') or self.extract_description_from_html(soup)
+        classes = metadata.get('classes') or self.extract_classes_from_html(soup)
+        full_text = self.extract_full_text(soup)
+
+        if not all([title, published_time, author, description, full_text]):
+            print(f"Skipping incomplete article: {url}")
+            return None
 
         print(f"Finished: {url}")
 
@@ -91,12 +95,40 @@ class ArticleScraper:
 
         return "0000"
 
+    def extract_title_from_html(self, soup: BeautifulSoup) -> Optional[str]:
+        title_tag = soup.find('meta', {'property': 'og:title'})
+        return title_tag['content'] if title_tag else None
+
+    def extract_keywords_from_html(self, soup: BeautifulSoup) -> List[str]:
+        keywords_tag = soup.find('meta', {'name': 'keywords'})
+        if keywords_tag and keywords_tag['content']:
+            return [k.strip() for k in keywords_tag['content'].split(',')]
+        return []
+
+    def extract_thumbnail_from_html(self, soup: BeautifulSoup) -> Optional[str]:
+        thumbnail_tag = soup.find('meta', {'property': 'og:image'})
+        return thumbnail_tag['content'] if thumbnail_tag else None
+
     def extract_date_from_html(self, soup: BeautifulSoup, date_type: str) -> Optional[str]:
         if date_type == 'published_time':
             date_tag = soup.find('meta', {'property': 'article:published_time'})
         elif date_type == 'last_updated':
             date_tag = soup.find('meta', {'property': 'article:modified_time'})
         return date_tag['content'] if date_tag else None
+
+    def extract_author_from_html(self, soup: BeautifulSoup) -> Optional[str]:
+        author_tag = soup.find('meta', {'name': 'author'})
+        return author_tag['content'] if author_tag else None
+
+    def extract_description_from_html(self, soup: BeautifulSoup) -> Optional[str]:
+        description_tag = soup.find('meta', {'property': 'og:description'})
+        return description_tag['content'] if description_tag else None
+
+    def extract_classes_from_html(self, soup: BeautifulSoup) -> List[dict]:
+        class_tags = soup.find_all('meta', {'name': 'classification'})
+        if class_tags:
+            return [{'class_name': tag['content']} for tag in class_tags]
+        return []
 
     def detect_language(self, soup: BeautifulSoup) -> Optional[str]:
         lang_tag = soup.find('html')
@@ -125,11 +157,9 @@ def main(year: int, article_limit: int):
     total_articles = 0
     article_limit_reached = [False]
 
-    # Parse the main sitemap to get all the month links
     main_sitemap_url = "https://www.almayadeen.net/sitemaps/all.xml"
     monthly_sitemaps = article_scraper.parse_sitemap(main_sitemap_url)
 
-    # Filter the sitemaps to only include those from the specified year
     relevant_sitemaps = [
         sitemap for sitemap in monthly_sitemaps
         if int(sitemap.split('-')[-2]) == year
@@ -164,8 +194,8 @@ def main(year: int, article_limit: int):
                     print(f"Error fetching article from {future_to_url[future]}: {e}")
 
         if all_articles:
-            FileUtility.save_articles(all_artiscles, year, month)
-            print(f"Scraping sscomplete for {year}-{month:02d}. {len(all_articles)} articles saved.")
+            FileUtility.save_articles(all_articles, year, month)
+            print(f"Scraping is complete for {year}-{month:02d}. {len(all_articles)} articles saved.")
 
     print(f"Total {total_articles} articles scraped and saved.")
 
