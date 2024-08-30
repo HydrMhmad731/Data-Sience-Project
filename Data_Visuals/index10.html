@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Categories - Pie Chart</title>
+
+    <!-- Styles -->
+    <style>
+        #chart-container {
+            display: flex;
+            align-items: flex-start;
+            height: 500px;
+            width: 100%;
+        }
+        #chartdiv {
+            width: 75%;
+            height: 100%;
+        }
+        #legenddiv {
+            width: 25%;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        #noData {
+            display: none;
+            color: red;
+            font-size: 18px;
+        }
+    </style>
+
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+</head>
+<body>
+
+    <!-- No Data Message -->
+    <div id="noData">No data available for top categories.</div>
+
+    <!-- Chart Container -->
+    <div id="chart-container">
+        <!-- Chart -->
+        <div id="chartdiv"></div>
+
+        <!-- Legend -->
+        <div id="legenddiv"></div>
+    </div>
+
+    <!-- Chart Code -->
+    <script>
+        am5.ready(function() {
+
+            // Create root element
+            var root = am5.Root.new("chartdiv");
+
+            // Set themes
+            root.setThemes([
+                am5themes_Animated.new(root)
+            ]);
+
+            // Create chart
+            var chart = root.container.children.push(
+                am5percent.PieChart.new(root, {
+                    endAngle: 270
+                })
+            );
+
+            // Create series
+            var series = chart.series.push(
+                am5percent.PieSeries.new(root, {
+                    valueField: "count",
+                    categoryField: "category",
+                    endAngle: 270
+                })
+            );
+
+            series.states.create("hidden", {
+                endAngle: -90
+            });
+
+            // Define colors
+            var colors = [
+                am5.color("#0000FF"), // Blue
+                am5.color("#1E90FF"), // Dodger Blue
+                am5.color("#00BFFF"), // Deep Sky Blue
+                am5.color("#87CEEB"), // Sky Blue
+                am5.color("#4682B4"), // Steel Blue
+                am5.color("#4169E1"), // Royal Blue
+                am5.color("#6495ED"), // Cornflower Blue
+                am5.color("#5F9FFF"), // Light Sky Blue
+                am5.color("#00CED1"), // Dark Turquoise
+                am5.color("#20B2AA")  // Light Sea Green
+            ];
+
+            // Fetch data from the Flask API
+            fetch("http://127.0.0.1:5000/top_classes")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        document.getElementById("noData").style.display = "block";
+                        document.getElementById("chart-container").style.display = "none";
+                        return;
+                    }
+
+                    // Transform data for the pie chart
+                    const chartData = data.map((item, index) => ({
+                        category: item._id.value,
+                        count: item.count,
+                        color: colors[index % colors.length]
+                    }));
+
+                    // Set data to series
+                    series.data.setAll(chartData);
+
+                    // Apply colors to slices
+                    series.slices.template.setAll({
+                        tooltipText: "{category}: {count}",
+                        stroke: am5.color(0xffffff),
+                        strokeWidth: 0
+                    });
+
+                    // Set color for each slice
+                    series.slices.template.adapters.add("fill", function(fill, target) {
+                        var index = target.dataItem.index;
+                        return chartData[index].color;
+                    });
+
+                    // Create legend
+                    var legendDiv = document.getElementById("legenddiv");
+                    legendDiv.innerHTML = "";
+                    chartData.forEach((item) => {
+                        var legendItem = document.createElement("div");
+                        legendItem.className = "legend-item";
+                        legendItem.innerHTML = `
+                            <div class="legend-color" style="background-color: ${item.color};"></div>
+                            <span>${item.category}</span>
+                        `;
+                        legendDiv.appendChild(legendItem);
+                    });
+
+                    // Appear animation
+                    series.appear(1000, 100);
+                })
+                .catch(error => {
+                    console.error("Error fetching data:", error);
+                    document.getElementById("noData").style.display = "block";
+                    document.getElementById("chart-container").style.display = "none";
+                });
+
+        }); // end am5.ready()
+    </script>
+
+</body>
+</html>

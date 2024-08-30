@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles by Publication Year</title>
+
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
+        .input-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input[type="number"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .no-data {
+            text-align: center;
+            color: #d9534f;
+            font-size: 18px;
+        }
+        .loader {
+            text-align: center;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Articles by Publication Year</h1>
+        <div class="input-container">
+            <input type="number" id="yearInput" placeholder="Enter Year" min="2000" max="2100">
+            <button onclick="fetchArticlesByYear()">Get Data</button>
+        </div>
+        <div id="loader" class="loader" style="display: none;">Loading...</div>
+        <div id="noData" class="no-data" style="display: none;">No data available for the specified year.</div>
+        <div id="chartdiv"></div>
+    </div>
+
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        function fetchArticlesByYear() {
+            const year = document.getElementById('yearInput').value.trim();
+            const apiUrl = `http://127.0.0.1:5000/articles_by_year/${year}`;
+
+            if (!year) {
+                alert('Please enter a year.');
+                return;
+            }
+
+            // Show loading spinner
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('chartdiv').style.display = 'none';
+
+            // Fetch data from the API
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loader').style.display = 'none';
+
+                    if (data.message) {
+                        document.getElementById('noData').style.display = 'block';
+                        document.getElementById('chartdiv').style.display = 'none';
+                    } else {
+                        document.getElementById('noData').style.display = 'none';
+                        document.getElementById('chartdiv').style.display = 'block';
+
+                        // Prepare data for chart
+                        const chartData = data.map(item => ({
+                            year: new Date(item.published_time).getFullYear(),
+                            count: 1
+                        }));
+
+                        // Group by year
+                        const groupedData = chartData.reduce((acc, curr) => {
+                            acc[curr.year] = (acc[curr.year] || 0) + curr.count;
+                            return acc;
+                        }, {});
+
+                        const formattedData = Object.keys(groupedData).map(key => ({
+                            year: key,
+                            count: groupedData[key]
+                        }));
+
+                        // Create chart
+                        am5.ready(function() {
+                            var root = am5.Root.new("chartdiv");
+
+                            root.setThemes([
+                                am5themes_Animated.new(root)
+                            ]);
+
+                            var chart = root.container.children.push(am5xy.XYChart.new(root, {
+                                panX: true,
+                                panY: true,
+                                wheelX: "panX",
+                                wheelY: "zoomX",
+                                pinchZoomX: true,
+                                paddingLeft: 50,
+                                paddingRight: 50
+                            }));
+
+                            var xRenderer = am5xy.AxisRendererX.new(root, {
+                                minGridDistance: 30,
+                                minorGridEnabled: true
+                            });
+
+                            xRenderer.labels.template.setAll({
+                                rotation: -90,
+                                centerY: am5.p50,
+                                centerX: am5.p100,
+                                paddingRight: 15
+                            });
+
+                            var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+                                categoryField: "year",
+                                renderer: xRenderer,
+                                tooltip: am5.Tooltip.new(root, {})
+                            }));
+
+                            var yRenderer = am5xy.AxisRendererY.new(root, {
+                                strokeOpacity: 0.1
+                            });
+
+                            var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                                renderer: yRenderer
+                            }));
+
+                            var series = chart.series.push(am5xy.ColumnSeries.new(root, {
+                                name: "Articles Count",
+                                xAxis: xAxis,
+                                yAxis: yAxis,
+                                valueYField: "count",
+                                categoryXField: "year",
+                                tooltip: am5.Tooltip.new(root, {
+                                    labelText: "{valueY}"
+                                })
+                            }));
+
+                            series.columns.template.setAll({
+                                cornerRadiusTL: 5,
+                                cornerRadiusTR: 5,
+                                strokeOpacity: 0
+                            });
+
+                            series.columns.template.adapters.add("fill", function (fill, target) {
+                                return chart.get("colors").getIndex(series.columns.indexOf(target));
+                            });
+
+                            series.columns.template.adapters.add("stroke", function (stroke, target) {
+                                return chart.get("colors").getIndex(series.columns.indexOf(target));
+                            });
+
+                            xAxis.data.setAll(formattedData);
+                            series.data.setAll(formattedData);
+
+                            series.appear(1000);
+                            chart.appear(1000, 100);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('noData').style.display = 'block';
+                });
+        }
+    </script>
+
+</body>
+</html>

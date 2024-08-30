@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles by Date - Line Chart</title>
+    <style>
+        /* Basic styles for the visualization */
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
+
+        /* Container for filters */
+        .filters-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .filter-select {
+            margin: 0 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .apply-button {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .apply-button:hover {
+            background-color: #0056b3;
+        }
+
+        .clear-button {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .clear-button:hover {
+            background-color: #c82333;
+        }
+    </style>
+    <!-- Include amCharts library from CDN -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+</head>
+<body>
+    <!-- Filters container -->
+    <div class="filters-container">
+        <select id="yearSelector" class="filter-select">
+            <option value="">Select Year</option>
+            <!-- Options will be populated dynamically -->
+        </select>
+        <select id="monthSelector" class="filter-select">
+            <option value="">Select Month</option>
+            <!-- Options will be populated dynamically -->
+        </select>
+        <button id="applyFilters" class="button apply-button">Apply Filters</button>
+        <button id="clearFilters" class="button clear-button">Clear</button>
+    </div>
+
+    <!-- Container for the line chart -->
+    <div id="chartdiv"></div>
+
+    <script>
+        am5.ready(async function() {
+            // Create root element
+            const root = am5.Root.new("chartdiv");
+
+            // Set themes
+            root.setThemes([
+                am5themes_Animated.new(root)
+            ]);
+
+            // Create chart
+            const chart = root.container.children.push(am5xy.XYChart.new(root, {
+                panX: false,
+                panY: false,
+                wheelX: "panX",
+                wheelY: "zoomX",
+                paddingLeft: 0
+            }));
+
+            // Add cursor
+            const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+                behavior: "zoomX"
+            }));
+            cursor.lineY.set("visible", false);
+
+            // Create axes
+            const xAxis = chart.xAxes.push(am5xy.DateAxis.new(root, {
+                maxDeviation: 0,
+                baseInterval: {
+                    timeUnit: "day",
+                    count: 1
+                },
+                renderer: am5xy.AxisRendererX.new(root, {
+                    minorGridEnabled: true,
+                    minGridDistance: 50
+                }),
+                tooltip: am5.Tooltip.new(root, {})
+            }));
+
+            xAxis.set("minorDateFormats", {
+                day: "dd",
+                month: "MM"
+            });
+
+            const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                renderer: am5xy.AxisRendererY.new(root, {})
+            }));
+
+            // Add series
+            const series = chart.series.push(am5xy.LineSeries.new(root, {
+                name: "Articles",
+                xAxis: xAxis,
+                yAxis: yAxis,
+                valueYField: "count",
+                valueXField: "date",
+                tooltip: am5.Tooltip.new(root, {
+                    labelText: "{valueY}"
+                })
+            }));
+
+            series.bullets.push(function() {
+                const bulletCircle = am5.Circle.new(root, {
+                    radius: 5,
+                    fill: series.get("fill")
+                });
+                return am5.Bullet.new(root, {
+                    sprite: bulletCircle
+                });
+            });
+
+            // Add scrollbar
+            chart.set("scrollbarX", am5.Scrollbar.new(root, {
+                orientation: "horizontal"
+            }));
+
+            // Fetch data from the Flask API
+            async function fetchData(year = '', month = '') {
+                try {
+                    const url = new URL('http://127.0.0.1:5000/articles_by_date');
+                    const params = new URLSearchParams();
+                    if (year) params.append('year', year);
+                    if (month) params.append('month', month);
+                    url.search = params.toString();
+
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                }
+            }
+
+            // Fetch and update data
+            function updateChart(year = '', month = '') {
+                fetchData(year, month).then(data => {
+                    if (data) {
+                        const formattedData = data.map(item => ({
+                            date: new Date(item.date).getTime(),
+                            count: item.count
+                        }));
+
+                        xAxis.data.setAll(formattedData);
+                        series.data.setAll(formattedData);
+                    } else {
+                        console.error('No data received from the API.');
+                    }
+                });
+            }
+
+            // Populate year and month selectors
+            function populateFilters() {
+                // For demonstration purposes, you might want to fetch available years and months from the server
+                const years = [2023, 2024]; // Example years
+                const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]; // Months in MM format
+
+                const yearSelector = document.getElementById("yearSelector");
+                const monthSelector = document.getElementById("monthSelector");
+
+                years.forEach(year => {
+                    yearSelector.innerHTML += `<option value="${year}">${year}</option>`;
+                });
+
+                months.forEach(month => {
+                    monthSelector.innerHTML += `<option value="${month}">${month}</option>`;
+                });
+            }
+
+            populateFilters();
+
+            // Event listeners for filters
+            document.getElementById("applyFilters").addEventListener("click", function() {
+                const year = document.getElementById("yearSelector").value;
+                const month = document.getElementById("monthSelector").value;
+                updateChart(year, month);
+            });
+
+            document.getElementById("clearFilters").addEventListener("click", function() {
+                document.getElementById("yearSelector").value = "";
+                document.getElementById("monthSelector").value = "";
+                updateChart();
+            });
+
+            // Initial load of data
+            updateChart();
+
+            // Make stuff animate on load
+            series.appear(1000);
+            chart.appear(1000, 100);
+        }); // end am5.ready()
+    </script>
+</body>
+</html>

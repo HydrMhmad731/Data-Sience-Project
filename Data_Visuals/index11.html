@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Details</title>
+
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .no-data {
+            text-align: center;
+            color: #d9534f;
+            font-size: 18px;
+        }
+        .loader {
+            text-align: center;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Article Details</h1>
+        <div class="input-container">
+            <input type="text" id="postIdInput" placeholder="Enter Post ID">
+            <button onclick="fetchArticleDetails()">Get Details</button>
+        </div>
+        <div id="loader" class="loader" style="display: none;">Loading...</div>
+        <div id="noData" class="no-data" style="display: none;">No article details available.</div>
+        <table id="articleTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        function fetchArticleDetails() {
+            const postId = document.getElementById('postIdInput').value.trim();
+            const apiUrl = `http://127.0.0.1:5000/article_details/${postId}`;
+
+            if (!postId) {
+                alert('Please enter a post ID.');
+                return;
+            }
+
+            // Show loading spinner
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('articleTable').style.display = 'none';
+
+            // Fetch data from the API
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loader').style.display = 'none';
+
+                    if (Object.keys(data).length === 0) {
+                        document.getElementById('noData').style.display = 'block';
+                    } else {
+                        document.getElementById('noData').style.display = 'none';
+                        document.getElementById('articleTable').style.display = 'table';
+
+                        const tableBody = document.querySelector('#articleTable tbody');
+                        tableBody.innerHTML = '';
+
+                        // Insert data into the table
+                        for (const key in data) {
+                            if (data.hasOwnProperty(key)) {
+                                const row = document.createElement('tr');
+                                const cell1 = document.createElement('td');
+                                cell1.textContent = key;
+                                const cell2 = document.createElement('td');
+                                cell2.textContent = data[key];
+                                row.appendChild(cell1);
+                                row.appendChild(cell2);
+                                tableBody.appendChild(row);
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('noData').style.display = 'block';
+                });
+        }
+    </script>
+
+</body>
+</html>

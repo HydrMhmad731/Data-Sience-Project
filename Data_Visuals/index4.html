@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles by Word Count - Histogram</title>
+    <style>
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+</head>
+<body>
+    <div id="chartdiv"></div>
+
+    <script>
+        am5.ready(async function() {
+            // Create root element
+            const root = am5.Root.new("chartdiv");
+
+            // Set themes
+            root.setThemes([
+                am5themes_Animated.new(root),
+                am5themes_Responsive.new(root)
+            ]);
+
+            // Create chart
+            const chart = root.container.children.push(am5xy.XYChart.new(root, {
+                panX: false,
+                panY: false,
+                wheelX: "panX",
+                wheelY: "zoomX",
+                paddingLeft: 0
+            }));
+
+            // Add cursor
+            const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+                behavior: "zoomX"
+            }));
+            cursor.lineY.set("visible", false);
+
+            // Create axes
+            const xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
+                renderer: am5xy.AxisRendererX.new(root, {
+                    minGridDistance: 30
+                }),
+                tooltip: am5.Tooltip.new(root, {})
+            }));
+
+            const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                renderer: am5xy.AxisRendererY.new(root, {})
+            }));
+
+            // Add series
+            const series = chart.series.push(am5xy.ColumnSeries.new(root, {
+                name: "Word Count",
+                xAxis: xAxis,
+                yAxis: yAxis,
+                valueYField: "count",
+                valueXField: "word_count",
+                tooltip: am5.Tooltip.new(root, {
+                    labelText: "{valueX}: {valueY} articles"
+                })
+            }));
+
+            series.columns.template.setAll({
+                width: am5.percent(80),
+                tooltipText: "{valueX}: {valueY} articles"
+            });
+
+            // Add scrollbar
+            chart.set("scrollbarX", am5.Scrollbar.new(root, {
+                orientation: "horizontal"
+            }));
+
+            // Fetch data from the Flask API
+            async function fetchData() {
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/articles_by_word_count');
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Failed to fetch data:', error);
+                }
+            }
+
+            // Fetch data and set it to the chart
+            const data = await fetchData();
+            if (data) {
+                // Prepare the data with correct field names
+                const formattedData = data.map(item => ({
+                    word_count: item._id,
+                    count: item.count
+                }));
+
+                series.data.setAll(formattedData);
+            } else {
+                console.error('No data received from the API.');
+            }
+
+            // Make stuff animate on load
+            series.appear(1000);
+            chart.appear(1000, 100);
+        }); // end am5.ready()
+    </script>
+</body>
+</html>
