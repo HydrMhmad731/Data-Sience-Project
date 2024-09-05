@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Chart Libraries -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/wc.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/hierarchy.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js" defer></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Data Visualization Dashboard</h1>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#chart1">Top Keywords (Word Cloud)</a></li>
+            <li><a href="#chart2">Top Authors (Bar Chart)</a></li>
+            <li><a href="#chart3">Articles by Date (Line Chart)</a></li>
+            <li><a href="#chart4">Articles by Word Count (Histogram)</a></li>
+            <li><a href="#chart5">Articles by Language (Pie Chart)</a></li>
+            <li><a href="#chart6">Articles by Category (Stacked Bar Chart)</a></li>
+            <li><a href="#chart7">Recent Articles (Table)</a></li>
+            <li><a href="#chart8">Articles by Keyword (Tag Cloud)</a></li>
+            <li><a href="#chart9">Articles by Author (Bar Chart)</a></li>
+            <li><a href="#chart10">Top Categories (Pyramid Chart)</a></li>
+            <li><a href="#chart11">Article Details</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <!-- Chart 1: Top Keywords (Word Cloud) -->
+        <section id="chart1" class="chart-container">
+            <h2>Top Keywords (Word Cloud)</h2>
+            <div id="chartdiv1" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 2: Top Authors (Bar Chart) -->
+        <section id="chart2" class="chart-container">
+            <h2>Top Authors (Bar Chart)</h2>
+            <div id="chartdiv2" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 3: Articles by Date (Line Chart) -->
+        <section id="chart3" class="chart-container">
+            <h2>Articles by Date (Line Chart)</h2>
+            <div class="filters">
+                <label for="yearSelector">Year:</label>
+                <select id="yearSelector">
+                    <option value="">All Years</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+
+                <label for="monthSelector">Month:</label>
+                <select id="monthSelector">
+                    <option value="">All Months</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+
+                <button id="applyFilters">Apply Filters</button>
+                <button id="clearFilters">Clear Filters</button>
+            </div>
+            <div id="chartdiv3" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 4: Articles by Word Count (Histogram) -->
+        <section id="chart4" class="chart-container">
+            <h2>Articles by Word Count (Histogram)</h2>
+            <div id="chartdiv4" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 5: Articles by Language (Pie Chart) -->
+        <section id="chart5" class="chart-container">
+            <h2>Articles by Language (Pie Chart)</h2>
+            <div id="chartdiv5" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 6: Articles by Category (Stacked Bar Chart) -->
+        <section id="chart6" class="chart-container">
+            <h2>Articles by Category (Stacked Bar Chart)</h2>
+            <div id="chartdiv6" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 7: Recent Articles (Table) -->
+        <section id="chart7" class="chart-container">
+            <h2>Recent Articles (Table)</h2>
+            <div id="noArticles" style="display: none;">No recent articles available.</div>
+            <div id="chartdiv7" class="chart-div">
+                <table id="recentArticlesTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Author</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rows will be populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Chart 8: Articles by Keyword (Tag Cloud) -->
+        <section id="chart8" class="chart-container">
+            <h2>Articles by Keyword (Tag Cloud)</h2>
+            <div id="chartdiv8" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 9: Articles by Author (Bar Chart) -->
+        <section id="chart9" class="chart-container">
+            <h2>Articles by Author (Bar Chart)</h2>
+            <div class="filters">
+                <label for="authorSelect">Select Author:</label>
+                <select id="authorSelect">
+                    <option value="">Select Author</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button id="applyAuthorFilter">Apply Filter</button>
+            </div>
+            <div id="chartdiv9" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 10: Top Categories (Pyramid Chart) -->
+        <section id="chart10" class="chart-container">
+            <h2>Top Categories (Pyramid Chart)</h2>
+            <div id="chartdiv10" class="chart-div"></div>
+        </section>
+
+        <!-- Chart 11: Article Details -->
+        <section id="chart11" class="chart-container">
+            <h2>Article Details</h2>
+            <div class="filters">
+                <label for="postidInput">Enter Post ID:</label>
+                <input type="text" id="postidInput" placeholder="Enter Post ID">
+                <button id="getArticleButton">Get Article</button>
+            </div>
+            <div id="articleDetails" class="chart-div" style="display: none;">
+                <table id="articleDetailsTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Keywords</th>
+                            <th>Publication Date</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Row will be populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+
+    <!-- Main Script -->
+    <script src="script.js" defer></script>
+</body>
+</html>

@@ -1,11 +1,15 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
+from flask import request
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from pymongo.errors import OperationFailure
 from bson.json_util import dumps
 
+
 app = Flask(__name__)
+CORS(app)
 
 # Connect to MongoDB Atlas
 client = MongoClient("mongodb+srv://hydr-mhmd:NDeZ2Szte09vSy2y@ds-cluster.a0vcg.mongodb.net/?retryWrites=true&w=majority&appName=DS-Cluster")
@@ -19,7 +23,7 @@ def top_keywords():
         {"$unwind": "$keywords"},
         {"$group": {"_id": "$keywords", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
-        {"$limit": 10}
+        {"$limit": 20}
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
@@ -30,7 +34,7 @@ def top_authors():
     pipeline = [
         {"$group": {"_id": "$author", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
-        {"$limit": 10}
+        {"$limit": 20}
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
@@ -99,10 +103,12 @@ def articles_by_classes():
     pipeline = [
         {"$unwind": "$classes"},
         {"$group": {"_id": "$classes", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
+        {"$sort": {"count": -1}},
+        {"$limit": 20}
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
+
 
 # 7. Recent Articles
 @app.route('/recent_articles', methods=['GET'])
@@ -131,10 +137,11 @@ def recent_articles():
 def articles_by_keyword(keyword):
     pipeline = [
         {"$match": {"keywords": keyword}},
-        {"$project": {"_id": 0, "postid": 1, "title": 1, "author": 1, "published_time": 1}}
+        {"$project": {"_id": 0, "postid": 1, "title": 1, "author": 1, "published_time": 1, "url": 1}}
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
+
 
 # 9. Articles by Author
 @app.route('/articles_by_author/<author_name>', methods=['GET'])
@@ -146,17 +153,26 @@ def articles_by_author(author_name):
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
 
+# 9.1 all authors
+@app.route('/all_authors', methods=['GET'])
+def all_authors():
+    authors = collection.distinct("author")  # Get distinct authors from MongoDB
+    return jsonify(authors)
+
+
 # 10. Top Classes
 @app.route('/top_classes', methods=['GET'])
 def top_classes():
+    limit = int(request.args.get('limit', 10))  # Get the limit from query parameters, default to 10
     pipeline = [
         {"$unwind": "$classes"},
         {"$group": {"_id": "$classes", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
-        {"$limit": 10}
+        {"$limit": limit}
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
+
 
 # 11. Article Details
 @app.route('/article_details/<postid>', methods=['GET'])
@@ -483,35 +499,25 @@ def articles_by_word_count_range(min, max):
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
 
-# 23. Articles with No Keywords
-@app.route('/articles_with_no_keywords', methods=['GET'])
-def articles_with_no_keywords():
+# 23. Articles with Specific Keyword Count
+@app.route('/articles_with_specific_keyword_count/<int:count>', methods=['GET'])
+def articles_with_specific_keyword_count(count):
     try:
-        # Aggregation pipeline to find documents with no keywords
         pipeline = [
-            {
-                "$match": {
-                    "$or": [
-                        {"keywords": {"$exists": False}},
-                        {"keywords": {"$eq": []}}
-                    ]
-                }
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "postid": 1,
-                    "title": 1
-                }
-            }
+            {"$project": {"keyword_count": {"$size": "$keywords"}, "postid": 1, "title": 1, "published_time": 1}},
+            {"$match": {"keyword_count": count}},
+            {"$limit": 10}  # Adjust this limit as needed
         ]
-
-        # Execute aggregation pipeline
         result = list(collection.aggregate(pipeline))
 
-        # Check if the result is empty
+        # Convert ObjectId to string directly in the route
+        for doc in result:
+            if '_id' in doc:
+                doc['_id'] = str(doc['_id'])
+
+        # Check if no articles were found
         if not result:
-            return jsonify({"message": "No articles found with no keywords"}), 404
+            return jsonify({"message": f"No articles found with exactly {count} keywords."}), 404
 
         return jsonify(result)
 
@@ -521,26 +527,22 @@ def articles_with_no_keywords():
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
 
-# 24. Most Frequent Video Duration
-@app.route('/most_frequent_video_duration', methods=['GET'])
-def most_frequent_video_duration():
-    pipeline = [
-        {"$group": {"_id": "$video_duration", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 10}
-    ]
-    result = list(collection.aggregate(pipeline))
-    return jsonify(result)
 
-# 25. Articles by Specific Day
-@app.route('/articles_by_day/<int:year>/<int:month>/<int:day>', methods=['GET'])
-def articles_by_day(year, month, day):
+# 24. Articles by Specific Date
+@app.route('/articles_by_specific_date/<date>', methods=['GET'])
+def articles_by_specific_date(date):
     try:
-        # Create start and end dates
-        start_date = datetime(year, month, day)
+        # Parse the date string into a datetime object
+        try:
+            specific_date = datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
+
+        # Create start and end dates for the day
+        start_date = specific_date
         end_date = start_date + timedelta(days=1)
 
-        # Aggregation pipeline
+        # Aggregation pipeline to find articles by specific date
         pipeline = [
             {
                 "$addFields": {
@@ -562,14 +564,65 @@ def articles_by_day(year, month, day):
             }
         ]
 
-        # Execute aggregation pipeline
+        # Execute the aggregation pipeline
         result = list(collection.aggregate(pipeline))
 
-        # Check if the result is empty
+        # Check if no articles were found for the date
         if not result:
-            return jsonify({"message": "No articles found for the specified date"}), 404
+            return jsonify({"message": f"No articles found for the date {date}."}), 404
 
-        return jsonify(result)
+        # Format the response with articles grouped by the specified date
+        response = {
+            "date": date,
+            "articles": result
+        }
+
+        return jsonify(response)
+
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+# 25 articles with a specific text
+@app.route('/articles_containing_text/<text>', methods=['GET'])
+def articles_containing_text(text):
+    try:
+        # Aggregation pipeline to find articles containing specific text in full_text
+        pipeline = [
+            {
+                "$match": {
+                    "full_text": {"$regex": text, "$options": "i"}  # Case-insensitive search for the text
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "postid": 1,
+                    "title": 1,
+                    "full_text": 1,
+                    "published_time": 1
+                }
+            },
+            {
+                "$limit": 10  # Adjust limit as needed
+            }
+        ]
+
+        # Execute the aggregation pipeline
+        result = list(collection.aggregate(pipeline))
+
+        # Check if no articles were found
+        if not result:
+            return jsonify({"message": f"No articles found containing the text '{text}'."}), 404
+
+        # Format the response with articles containing the specified text
+        response = {
+            "text": text,
+            "articles": result
+        }
+
+        return jsonify(response)
 
     except OperationFailure as e:
         return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
@@ -611,8 +664,279 @@ def articles_by_word_count_under(x):
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
+# 28. articles grouped by coverage
+@app.route('/articles_grouped_by_coverage', methods=['GET'])
+def articles_grouped_by_coverage():
+    try:
+        # Aggregation pipeline to group articles by the 'coverage' field in 'classes'
+        pipeline = [
+            {
+                "$unwind": "$classes"  # Unwind the 'classes' array
+            },
+            {
+                "$match": {
+                    "classes.mapping": "coverage"  # Ensure we are matching coverage
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$classes.value",  # Group by the coverage category
+                    "article_count": {"$sum": 1}  # Count the number of articles
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "coverage": "$_id",
+                    "article_count": 1
+                }
+            }
+        ]
 
-# 28. Articles by Keyword Length
+        # Execute the aggregation pipeline
+        result = list(collection.aggregate(pipeline))
+
+        # Check if no articles were found
+        if not result:
+            return jsonify({"message": "No articles found for any coverage category."}), 404
+
+        # Format the response with coverage and article counts
+        response = {
+            "coverage_summary": result
+        }
+
+        return jsonify(response)
+
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+
+# 29 articles last x hours
+@app.route('/articles_last_X_hours/<int:x>', methods=['GET'])
+def articles_last_X_hours(x):
+    try:
+        # Calculate the time threshold (current time minus X hours)
+        time_threshold = datetime.utcnow() - timedelta(hours=x)
+
+        # Aggregation pipeline
+        pipeline = [
+            {
+                "$addFields": {
+                    "published_time": {
+                        "$dateFromString": {
+                            "dateString": "$published_time",
+                            "onError": None  # Handle invalid date strings
+                        }
+                    }
+                }
+            },
+            {
+                "$match": {
+                    "published_time": {
+                        "$gte": time_threshold  # Filter articles published in the last X hours
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "title": 1,
+                    "published_time": 1
+                }
+            },
+            {
+                "$sort": {
+                    "published_time": -1  # Sort articles by most recent first
+                }
+            }
+        ]
+
+        # Execute aggregation pipeline
+        result = list(collection.aggregate(pipeline))
+
+        # Check if no articles were found
+        if not result:
+            return jsonify({"message": f"No articles found in the last {x} hours."}), 404
+
+        return jsonify(result)
+
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+# 30 most articles by title length
+@app.route('/articles_by_title_length', methods=['GET'])
+def articles_by_title_length():
+    try:
+        # Aggregation pipeline
+        pipeline = [
+            {
+                "$addFields": {
+                    "title_length": {
+                        "$size": {
+                            "$split": ["$title", " "]  # Split the title into words and count them
+                        }
+                    }
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$title_length",  # Group by the length of the title
+                    "count": {"$sum": 1}  # Count the number of articles for each title length
+                }
+            },
+            {
+                "$sort": {"_id": 1}  # Sort by title length in ascending order
+            }
+        ]
+
+        # Execute aggregation pipeline
+        result = list(collection.aggregate(pipeline))
+
+        # Check if no articles were found
+        if not result:
+            return jsonify({"message": "No articles found."}), 404
+
+        # Format the result to include title length in the message
+        formatted_result = [
+            {
+                "title_length": item["_id"],
+                "count": item["count"]
+            } for item in result
+        ]
+
+        return jsonify(formatted_result)
+
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+# 31 most updated artciles
+@app.route('/most_updated_articles', methods=['GET'])
+def most_updated_articles():
+    try:
+        # Aggregation pipeline
+        pipeline = [
+            {
+                "$match": {
+                    "$expr": {"$gt": ["$last_updated", "$published_time"]}  # Only articles updated after publication
+                }
+            },
+            {
+                "$addFields": {
+                    "update_count": {
+                        "$cond": {
+                            "if": {"$isArray": "$last_updated"},  # Check if last_updated is an array
+                            "then": {"$size": "$last_updated"},  # Count the number of updates (array size)
+                            "else": 1  # If not an array, but updated, count as 1 update
+                        }
+                    }
+                }
+            },
+            {
+                "$match": {
+                    "update_count": {"$gt": 0}  # Ensure articles have been updated at least once
+                }
+            },
+            {
+                "$sort": {"update_count": -1}  # Sort articles by number of updates (most to least)
+            },
+            {
+                "$limit": 10  # Limit to the top 10 most updated articles
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "title": 1,
+                    "update_count": 1,  # Include the number of updates
+                    "last_updated": 1  # Optionally include the last updated time(s)
+                }
+            }
+        ]
+
+        # Execute the aggregation pipeline
+        result = list(collection.aggregate(pipeline))
+
+        # Check if no articles were found
+        if not result:
+            return jsonify({"message": "No updated articles found."}), 404
+
+        return jsonify(result)
+
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+
+
+# 32 articles last x hours by specific date
+@app.route('/articles_last_X_hours/<int:x>/<string:date>', methods=['GET'])
+def articles_last_X_hours_on_date(x, date):
+    try:
+
+        base_date = datetime.strptime(date, '%Y-%m-%d')
+
+
+        start_time = base_date
+        end_time = start_time + timedelta(hours=x)
+
+
+        pipeline = [
+            {
+                "$addFields": {
+                    "published_time": {
+                        "$dateFromString": {
+                            "dateString": "$published_time",
+                            "onError": None
+                        }
+                    }
+                }
+            },
+            {
+                "$match": {
+                    "published_time": {
+                        "$gte": start_time,
+                        "$lt": end_time
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "title": 1,
+                    "published_time": 1
+                }
+            },
+            {
+                "$sort": {
+                    "published_time": -1
+                }
+            }
+        ]
+
+
+        result = list(collection.aggregate(pipeline))
+
+
+        if not result:
+            return jsonify({"message": f"No articles found in the last {x} hours from {date}."}), 404
+
+        return jsonify(result)
+
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Please use yyyy-mm-dd format."}), 400
+    except OperationFailure as e:
+        return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+
+# 33. Articles by Keyword Length
 @app.route('/articles_by_keyword_length', methods=['GET'])
 def articles_by_keyword_length():
     pipeline = [
@@ -623,7 +947,7 @@ def articles_by_keyword_length():
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
 
-# 29. Article with Longest Title
+# 34. Article with Longest Title
 @app.route('/article_with_longest_title', methods=['GET'])
 def article_with_longest_title():
     try:
@@ -654,7 +978,7 @@ def article_with_longest_title():
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
 
-# 30. Article with Shortest Title
+# 35. Article with Shortest Title
 @app.route('/article_with_shortest_title', methods=['GET'])
 def article_with_shortest_title():
     try:
@@ -681,6 +1005,33 @@ def article_with_shortest_title():
 
     except OperationFailure as e:
         return jsonify({"error": "MongoDB operation failed: " + str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+
+# additional endpoint
+@app.route('/keywords_frequency', methods=['GET'])
+def keywords_frequency():
+    try:
+        pipeline = [
+            {"$unwind": "$keywords"},  # Deconstructs the keywords array
+            {"$group": {
+                "_id": "$keywords",  # Group by keyword
+                "count": {"$sum": 1}  # Count occurrences
+            }},
+            {"$project": {
+                "_id": 0,
+                "tag": "$_id",
+                "weight": "$count"
+            }}
+        ]
+        result = list(collection.aggregate(pipeline))
+
+        # Check if the result is empty
+        if not result:
+            return jsonify({"message": "No keywords found"}), 404
+
+        return jsonify(result)
+
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
