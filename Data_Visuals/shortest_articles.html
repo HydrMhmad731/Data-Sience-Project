@@ -9,10 +9,9 @@
     <!-- Font Awesome Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- amCharts CDN -->
-    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+     <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -216,9 +215,9 @@
                     </button>
                     <ul id="group5" class="dropdown-content">
                         <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
-                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Images</a></li>
-                        <li><a href="articles_with_audio.html"><i class="fas fa-volume-up"></i> Articles with Audio</a></li>
-                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
+                        <li><a href="articles_with_images.html"><i class="fas fa-image"></i> Articles with Images</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_with_external_links.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
                         <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
                     </ul>
                 </li>
@@ -246,107 +245,115 @@
             }
         }
 
-        am5.ready(async function() {
-        // Create root element
-        const root = am5.Root.new("chartdiv");
+         am5.ready(function() {
 
-        // Set themes
-        root.setThemes([
-            am5themes_Animated.new(root),
-            am5themes_Responsive.new(root)
-        ]);
+            // Create root element
+            var root = am5.Root.new("chartdiv");
 
-        // Create chart
-        const chart = root.container.children.push(am5xy.XYChart.new(root, {
-            panX: false,
-            panY: false,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            paddingLeft: 0
-        }));
+            // Set themes
+            root.setThemes([
+                am5themes_Animated.new(root)
+            ]);
 
-        // Add cursor
-        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
-            behavior: "zoomX"
-        }));
-        cursor.lineY.set("visible", false);
+            // Create chart
+            var chart = root.container.children.push(
+                am5xy.XYChart.new(root, {
+                    panX: true,
+                    panY: true,
+                    wheelX: "panX",
+                    wheelY: "zoomX",
+                    paddingLeft: 5,
+                    paddingRight: 5
+                })
+            );
 
-        // Create axes
-        const xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererX.new(root, {
-                minGridDistance: 20
-            }),
-            tooltip: am5.Tooltip.new(root, {})
-        }));
+            // Add cursor
+            var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+            cursor.lineY.set("visible", false);
 
-        const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererY.new(root, {})
-        }));
+            // Create axes
+            var xRenderer = am5xy.AxisRendererX.new(root, {
+                minGridDistance: 60,
+                minorGridEnabled: true
+            });
 
-        // Add series
-        const series = chart.series.push(am5xy.ColumnSeries.new(root, {
-            name: "Word Count",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "count",
-            valueXField: "word_count",
-            tooltip: am5.Tooltip.new(root, {
-                labelText: "{valueY}"
-            })
-        }));
+            var xAxis = chart.xAxes.push(
+                am5xy.CategoryAxis.new(root, {
+                    maxDeviation: 0.3,
+                    categoryField: "title",
+                    renderer: xRenderer,
+                    tooltip: am5.Tooltip.new(root, {})
+                })
+            );
 
-        series.columns.template.setAll({
-            strokeOpacity: 0,
-            width: 10, // Make bars thinner
-            cornerRadiusBR: 3,
-            cornerRadiusTR: 3,
-            minHeight: 10 // Minimum height for better visibility
-        });
+            xRenderer.grid.template.setAll({
+                location: 1
+            });
 
-        // Add scrollbar
-        chart.set("scrollbarX", am5.Scrollbar.new(root, {
-            orientation: "horizontal"
-        }));
+            var yAxis = chart.yAxes.push(
+                am5xy.ValueAxis.new(root, {
+                    maxDeviation: 0.3,
+                    renderer: am5xy.AxisRendererY.new(root, {
+                        strokeOpacity: 0.1
+                    })
+                })
+            );
 
-        // Fetch data from the Flask API
-        async function fetchData() {
-            try {
-                const response = await fetch('http://127.0.0.1:5000/articles_by_word_count');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Failed to fetch data:', error);
-            }
-        }
+            // Create series
+            var series = chart.series.push(
+                am5xy.ColumnSeries.new(root, {
+                    name: "Articles",
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "word_count",
+                    sequencedInterpolation: true,
+                    categoryXField: "title"
+                })
+            );
 
-        // Fetch and update data
-        function updateChart() {
-            fetchData().then(data => {
-                if (data) {
-                    // Transform data to be compatible with chart
-                    const formattedData = data.map(item => ({
-                        word_count: item._id,
-                        count: item.count
+            series.columns.template.setAll({
+                width: am5.percent(120),
+                fillOpacity: 0.9,
+                strokeOpacity: 0
+            });
+            series.columns.template.adapters.add("fill", (fill, target) => {
+                return chart.get("colors").getIndex(series.columns.indexOf(target));
+            });
+            series.columns.template.adapters.add("stroke", (stroke, target) => {
+                return chart.get("colors").getIndex(series.columns.indexOf(target));
+            });
+            series.columns.template.set("draw", function(display, target) {
+                var w = target.getPrivate("width", 0);
+                var h = target.getPrivate("height", 0);
+                display.moveTo(0, h);
+                display.bezierCurveTo(w / 4, h, w / 4, 0, w / 2, 0);
+                display.bezierCurveTo(w - w / 4, 0, w - w / 4, h, w, h);
+            });
+
+            // Fetch data and set chart
+            fetch('http://127.0.0.1:5000/shortest_articles')
+                .then(response => response.json())
+                .then(data => {
+                    // Format data for chart
+                    const chartData = data.map(item => ({
+                        title: item.title,
+                        word_count: item.word_count
                     }));
 
-                    xAxis.data.setAll(formattedData);
-                    series.data.setAll(formattedData);
-                } else {
-                    console.error('No data received from the API.');
-                }
-            });
-        }
+                    // Update chart data
+                    xAxis.data.setAll(chartData);
+                    series.data.setAll(chartData);
 
-        // Initial load of data
-        updateChart();
+                    // Animate on load
+                    series.appear(1000);
+                    chart.appear(1000, 100);
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    alert('Error fetching data. Please try again later.');
+                });
 
-        // Make stuff animate on load
-        series.appear(1000);
-        chart.appear(1000, 100);
-    }); // end am5.ready()
+        }); // end am5.ready()
     </script>
 
 </body>

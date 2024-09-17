@@ -4,12 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Mayadeen Data Dashboard - Word Cloud</title>
+    <title>Articles with More than N Words</title>
 
     <!-- Font Awesome Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <style>
+    <!-- amCharts CDN -->
+     <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+   <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -138,11 +142,43 @@
             font-size: 18px;
             line-height: 1.6;
         }
+         #container {
+            text-align: center;
+        }
+        #inputForm {
+            margin-bottom: 20px;
+        }
+        #wordCountInput {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #submitButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: orange;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #submitButton:hover {
+            background-color: darkorange;
+        }
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
         table {
-            width: 65%;
-            margin: 20px auto;
+            width: 100%;
             border-collapse: collapse;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
         }
         th, td {
             padding: 12px;
@@ -150,21 +186,17 @@
             border-bottom: 1px solid #ddd;
         }
         th {
-            background-color: #ff6f00; /* Orange color */
+            background-color: orange;
             color: white;
-            font-weight: bold;
-        }
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
         }
         tr:hover {
-            background-color: #e0e0e0;
+            background-color: #f5f5f5;
+            cursor: pointer;
         }
-        .no-data {
-            text-align: center;
-            padding: 20px;
-            font-size: 18px;
-            color: #ff6f00; /* Orange color */
+
+        #chartdiv {
+            width: 100%;
+            height: 500px;
         }
     </style>
 </head>
@@ -198,8 +230,9 @@
                         <li><a href="articles_by_year.html"><i class="fas fa-calendar-alt"></i> Articles by Publication Year</a></li>
                         <li><a href="articles_by_month.html"><i class="fas fa-calendar-day"></i> Articles by Published Month</a></li>
                         <li><a href="recent_articles.html"><i class="fas fa-newspaper"></i> Recent Articles</a></li>
+                        <li><a href="articles_updated_after_publication.html"><i class="fas fa-calendar-day"></i> articles_updated_after_publication</a></li>
                         <li><a href="articles_last_24_hours.html"><i class="fas fa-clock"></i> Articles Published in Last 24 Hours</a></li>
-                        <li><a href="most_popular_keywords.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last 7 Days</a></li>
+                        <li><a href="most_popular_keywords_last_x_days.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last x Days</a></li>
                     </ul>
                 </li>
                 <li>
@@ -211,7 +244,7 @@
                         <li><a href="longest_articles.html"><i class="fas fa-file-alt"></i> Longest Articles</a></li>
                         <li><a href="shortest_articles.html"><i class="fas fa-file-alt"></i> Shortest Articles</a></li>
                         <li><a href="articles_with_specific_keyword_count.html"><i class="fas fa-key"></i> Articles with Specific Keyword Count</a></li>
-                        <li><a href="articles_by_title_length.html"><i class="fas fa-heading"></i> Articles by Length of Title</a></li>
+                        <li><a href="articles_by_specific_date.html"><i class="fas fa-heading"></i> Articles By Specific Date</a></li>
                         <li><a href="articles_by_word_count_range.html"><i class="fas fa-chart-histogram"></i> Articles by Word Count Range</a></li>
                         <li><a href="articles_with_specific_text.html"><i class="fas fa-file-word"></i> Articles Containing Specific Text</a></li>
                         <li><a href="articles_with_more_than_n_words.html"><i class="fas fa-text-width"></i> Articles with More than N Words</a></li>
@@ -235,9 +268,9 @@
                     </button>
                     <ul id="group5" class="dropdown-content">
                         <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
-                        <li><a href="articles_with_images.html"><i class="fas fa-image"></i> Articles with Images</a></li>
-                        <li><a href="articles_with_audio.html"><i class="fas fa-volume-up"></i> Articles with Audio</a></li>
-                        <li><a href="articles_with_external_links.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
+                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Thumbnail</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles by keyword count</a></li>
                         <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
                     </ul>
                 </li>
@@ -248,24 +281,16 @@
     <!-- Main Content -->
     <div id="main-content">
         <div class="container">
-            <h1>Recent Articles Table</h1>
-            <p>This word cloud visualization displays the most frequently mentioned keywords in the articles.</p>
-            <table id="articlesTable">
-           <thead>
-                <tr>
-                     <th>Title</th>
-                    <th>Published Time</th>
-                    <th>Author</th>
-                    <th>Description</th>
-                    <th>Language</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Table rows will be added here by JavaScript -->
-            </tbody>
-        </table>
-        <div id="noData" class="no-data" style="display: none;">No recent articles found</div>
-
+            <h1>Articles With More Than N Word</h1>
+            <p>Thisvisualization displays the articles with more the a number of select word count.</p>
+            <div id="container">
+        <!-- Form for word count input -->
+            <div id="inputForm">
+                <input type="number" id="wordCountInput" placeholder="Enter minimum word count">
+                <button id="submitButton">Generate Chart</button>
+            </div>
+        </div>
+            <div id="chartdiv"></div>
         </div>
     </div>
 
@@ -280,34 +305,88 @@
             }
         }
 
-         document.addEventListener('DOMContentLoaded', function() {
-            fetch('http://127.0.0.1:5000/recent_articles')
-                .then(response => response.json())
-                .then(data => {
-                    if (Array.isArray(data) && data.length > 0) {
-                        const tableBody = document.querySelector('#articlesTable tbody');
-                        data.forEach(article => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${article.title || 'N/A'}</td>
-                                <td>${new Date(article.published_time).toLocaleString() || 'N/A'}</td>
-                                <td>${article.author || 'N/A'}</td>
-                                <td>${article.description || 'N/A'}</td>
-                                <td>${article.lang || 'N/A'}</td>
-                            `;
-                            tableBody.appendChild(row);
-                        });
-                    } else {
-                        document.querySelector('#articlesTable').style.display = 'none';
-                        document.querySelector('#noData').style.display = 'block';
-                    }
+        am5.ready(function() {
+
+            var root = am5.Root.new("chartdiv");
+
+            const myTheme = am5.Theme.new(root);
+
+            myTheme.rule("AxisLabel", ["minor"]).setAll({
+              dy:1
+            });
+
+            root.setThemes([
+                am5themes_Animated.new(root),
+                myTheme,
+                am5themes_Responsive.new(root)
+            ]);
+
+            var chart = root.container.children.push(am5xy.XYChart.new(root, {
+                paddingLeft: 0
+            }));
+
+            var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+                behavior: "zoomX"
+            }));
+            cursor.lineY.set("visible", false);
+
+            var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+                categoryField: "category",
+                renderer: am5xy.AxisRendererX.new(root, {
+                    minGridDistance: 30
                 })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    document.querySelector('#articlesTable').style.display = 'none';
-                    document.querySelector('#noData').style.display = 'block';
-                });
-        });
+            }));
+
+            var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                renderer: am5xy.AxisRendererY.new(root, {})
+            }));
+
+            var series = chart.series.push(am5xy.ColumnSeries.new(root, {
+                name: "Articles",
+                xAxis: xAxis,
+                yAxis: yAxis,
+                valueYField: "value",
+                categoryXField: "category",
+                tooltip: am5.Tooltip.new(root, {
+                    labelText: "{valueY}"
+                })
+            }));
+
+            series.columns.template.setAll({ strokeOpacity: 0 });
+
+            // Function to fetch data and update chart
+            function updateChart(wordCount) {
+                fetch(`http://127.0.0.1:5000/articles_by_word_count_over/${wordCount}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        var chartData = data.map(article => ({
+                            category: article.title,
+                            value: article.word_count
+                        }));
+
+                        series.data.setAll(chartData);
+                        xAxis.data.setAll(chartData);
+
+                        series.appear(1000);
+                        chart.appear(1000, 100);
+                    })
+                    .catch(error => console.error('Error fetching data:', error));
+            }
+
+            // Add event listener to button
+            document.getElementById('submitButton').addEventListener('click', function() {
+                var wordCount = document.getElementById('wordCountInput').value;
+                if (wordCount) {
+                    updateChart(wordCount);
+                }
+            });
+
+        }); // end am5.ready()
     </script>
 
 </body>

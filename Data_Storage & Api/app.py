@@ -6,6 +6,7 @@ from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from pymongo.errors import OperationFailure
 from bson.json_util import dumps
+import pandas as pd
 
 
 app = Flask(__name__)
@@ -213,11 +214,26 @@ def articles_by_year(year):
                 }
             },
             {
+                "$group": {
+                    "_id": {
+                        "month": {"$month": "$published_time"},
+                        "year": {"$year": "$published_time"}
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$sort": {
+                    "_id.year": 1,
+                    "_id.month": 1
+                }
+            },
+            {
                 "$project": {
                     "_id": 0,
-                    "postid": 1,
-                    "title": 1,
-                    "published_time": 1
+                    "month": "$_id.month",
+                    "year": "$_id.year",
+                    "count": 1
                 }
             }
         ]
@@ -313,6 +329,31 @@ def articles_updated_after_publication():
     ]
     result = list(collection.aggregate(pipeline))
     return jsonify(result)
+# count updated articles
+@app.route('/count_updated_articles', methods=['GET'])
+def count_updated_articles():
+    # Define the query to find articles updated after publication
+    pipeline = [
+        {
+            '$match': {
+                '$expr': {
+                    '$gt': ['$last_updated', '$published_time']
+                }
+            }
+        },
+        {
+            '$count': 'count'
+        }
+    ]
+
+    # Execute the aggregation pipeline
+    result = list(collection.aggregate(pipeline))
+
+    # Get the count from the result
+    count = result[0]['count'] if result else 0
+
+    return jsonify({"count": count})
+
 
 # 19. Articles by Coverage
 @app.route('/articles_by_coverage/<coverage>', methods=['GET'])
@@ -601,7 +642,8 @@ def articles_containing_text(text):
                     "postid": 1,
                     "title": 1,
                     "full_text": 1,
-                    "published_time": 1
+                    "published_time": 1,
+                    "url": 1  # Include the URL field
                 }
             },
             {
@@ -1008,32 +1050,153 @@ def article_with_shortest_title():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
 
-# additional endpoint
-@app.route('/keywords_frequency', methods=['GET'])
-def keywords_frequency():
+
+# Route to get articles by sentiment (positive, negative, or neutral)
+@app.route('/articles_by_sentiment/<sentiment>', methods=['GET'])
+def get_articles_by_sentiment(sentiment):
     try:
-        pipeline = [
-            {"$unwind": "$keywords"},  # Deconstructs the keywords array
-            {"$group": {
-                "_id": "$keywords",  # Group by keyword
-                "count": {"$sum": 1}  # Count occurrences
-            }},
-            {"$project": {
-                "_id": 0,
-                "tag": "$_id",
-                "weight": "$count"
-            }}
-        ]
-        result = list(collection.aggregate(pipeline))
+        # Query articles based on sentiment
+        articles = collection.find({'sentiment': sentiment})
 
-        # Check if the result is empty
-        if not result:
-            return jsonify({"message": "No keywords found"}), 404
+        # Prepare response with article data
+        result = []
+        for article in articles:
+            result.append({
+                'title': article.get('title', ''),
+                'url': article.get('url', ''),
+                'published_time': article.get('published_time', ''),
+                'sentiment': article.get('sentiment', '')
+            })
 
-        return jsonify(result)
+        # Return the result as a JSON response
+        return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": "An unexpected error occurred: " + str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
+
+# Endpoint to query articles by person
+@app.route('/articles_by_person/<person_name>', methods=['GET'])
+def get_articles_by_person(person_name):
+    # Query MongoDB for articles that mention the specified person
+    query = {"entities.PER": {"$in": [person_name]}}
+
+    # Fetch matching articles from the collection
+    articles = collection.find(query, {"postid": 1, "title": 1, "published_time": 1, "entities.PER": 1})
+
+    # Format the results to include only postid, title, publication time, and the person queried
+    results = []
+    for article in articles:
+        results.append({
+            "postid": article.get("postid"),
+            "title": article.get("title"),
+            "published_time": article.get("published_time"),
+            "person_name": person_name
+        })
+
+    # Return the result as JSON
+    return jsonify(results), 200
+
+# endpoint entity loc
+@app.route('/articles_by_location/<location_name>', methods=['GET'])
+def get_articles_by_location(location_name):
+    # Query MongoDB for articles that mention the specified location
+    query = {"entities.LOC": {"$in": [location_name]}}
+
+    # Fetch matching articles from the collection
+    articles = collection.find(query, {"postid": 1, "title": 1, "published_time": 1, "entities.LOC": 1})
+
+    # Format the results to include only postid, title, publication time, and the location queried
+    results = []
+    for article in articles:
+        results.append({
+            "postid": article.get("postid"),
+            "title": article.get("title"),
+            "published_time": article.get("published_time"),
+            "location_name": location_name
+        })
+
+    # Return the result as JSON
+    return jsonify(results), 200
+
+
+# endpoint entity org
+@app.route('/articles_by_organization/<organization_name>', methods=['GET'])
+def get_articles_by_organization(organization_name):
+    # Query MongoDB for articles that mention the specified organization
+    query = {"entities.ORG": {"$in": [organization_name]}}
+
+    # Fetch matching articles from the collection
+    articles = collection.find(query, {"postid": 1, "title": 1, "published_time": 1, "entities.ORG": 1})
+
+    # Format the results to include only postid, title, publication time, and the organization queried
+    results = []
+    for article in articles:
+        results.append({
+            "postid": article.get("postid"),
+            "title": article.get("title"),
+            "published_time": article.get("published_time"),
+            "organization_name": organization_name
+        })
+
+    # Return the result as JSON
+    return jsonify(results), 200
+
+#top entities endpoint
+@app.route('/top_entities', methods=['GET'])
+def get_top_entities():
+    # Aggregation pipeline to find top 10 persons (PER)
+    top_persons_pipeline = [
+        {"$unwind": "$entities.PER"},
+        {"$group": {"_id": "$entities.PER", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+
+    # Aggregation pipeline to find top 10 locations (LOC)
+    top_locations_pipeline = [
+        {"$unwind": "$entities.LOC"},
+        {"$group": {"_id": "$entities.LOC", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+
+    # Aggregation pipeline to find top 10 organizations (ORG)
+    top_organizations_pipeline = [
+        {"$unwind": "$entities.ORG"},
+        {"$group": {"_id": "$entities.ORG", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 10}
+    ]
+
+    # Execute the pipelines
+    top_persons = list(collection.aggregate(top_persons_pipeline))
+    top_locations = list(collection.aggregate(top_locations_pipeline))
+    top_organizations = list(collection.aggregate(top_organizations_pipeline))
+
+    # Format the results
+    results = {
+        "top_persons": [{"name": person["_id"], "count": person["count"]} for person in top_persons],
+        "top_locations": [{"name": location["_id"], "count": location["count"]} for location in top_locations],
+        "top_organizations": [{"name": organization["_id"], "count": organization["count"]} for organization in
+                              top_organizations]
+    }
+
+    # Return the result as JSON
+    return jsonify(results), 200
+
+
+#Sentiment Trend Endpoint
+@app.route('/sentiment_trends', methods=['GET'])
+def sentiment_trends():
+    articles = collection.find({}, {"published_time": 1, "sentiment": 1})
+    data = list(articles)
+    df = pd.DataFrame(data)
+    df['published_time'] = pd.to_datetime(df['published_time'])
+    df_grouped = df.groupby([df['published_time'].dt.date, 'sentiment']).size().unstack(fill_value=0)
+    trend_data = df_grouped.to_dict(orient='index')
+    return jsonify(trend_data)
+
 
 
 if __name__ == '__main__':

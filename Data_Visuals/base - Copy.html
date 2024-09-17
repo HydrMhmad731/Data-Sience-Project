@@ -4,15 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Mayadeen Data Dashboard - Word Cloud</title>
+    <title>Al Mayadeen Data Dashboard</title>
 
     <!-- Font Awesome Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- amCharts CDN -->
-    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -117,16 +113,15 @@
             padding: 20px;
             margin-left: 250px;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             background-color: #ffffff;
             box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-            overflow: auto;
         }
 
         .container {
             width: 100%;
-            max-width: 1000px;
+            max-width: 800px;
             box-sizing: border-box;
             text-align: center;
         }
@@ -143,9 +138,8 @@
             line-height: 1.6;
         }
 
-        #chartdiv {
-            width: 100%;
-            height: 500px;
+        .show {
+            display: block;
         }
     </style>
 </head>
@@ -215,11 +209,10 @@
                         <i class="fas fa-video"></i> Group 5: Media & Updates
                     </button>
                     <ul id="group5" class="dropdown-content">
-                        <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
-                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Images</a></li>
-                        <li><a href="articles_with_audio.html"><i class="fas fa-volume-up"></i> Articles with Audio</a></li>
-                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
-                        <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
+                        <li><a href="articles_with_videos.html"><i class="fas fa-video"></i> Articles Containing Video</a></li>
+                        <li><a href="articles_with_thumbnails.html"><i class="fas fa-image"></i> Articles with Thumbnails</a></li>
+                        <li><a href="articles_without_thumbnail.html"><i class="fas fa-image-slash"></i> Articles without Thumbnails</a></li>
+                        <li><a href="recently_updated_articles.html"><i class="fas fa-edit"></i> Recently Updated Articles</a></li>
                     </ul>
                 </li>
             </ul>
@@ -229,124 +222,39 @@
     <!-- Main Content -->
     <div id="main-content">
         <div class="container">
-            <h1>Top Keywords Word Cloud</h1>
-            <p>This word cloud visualization displays the most frequently mentioned keywords in the articles.</p>
-            <div id="chartdiv"></div>
+            <h1>Welcome to Al Mayadeen Data Dashboard</h1>
+            <p>Use the navigation sidebar to explore different visualizations and insights related to Al Mayadeen articles.</p>
         </div>
     </div>
 
     <script>
-        // Toggle dropdown visibility
-        function toggleDropdown(id) {
-            const dropdown = document.getElementById(id);
-            if (dropdown.style.display === "none" || dropdown.style.display === "") {
-                dropdown.style.display = "block";
-            } else {
-                dropdown.style.display = "none";
+        // Function to toggle the dropdown
+        function toggleDropdown(groupId) {
+            var dropdownContent = document.getElementById(groupId);
+            var isVisible = dropdownContent.style.display === "block";
+
+            // Hide all dropdowns
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                dropdowns[i].style.display = "none";
             }
+
+            // Toggle the selected dropdown
+            dropdownContent.style.display = isVisible ? "none" : "block";
         }
 
-        am5.ready(async function() {
-        // Create root element
-        const root = am5.Root.new("chartdiv");
+        // Close dropdown if clicked outside the sidebar
+        document.addEventListener("click", function (event) {
+            var sidebar = document.getElementById("sidebar");
+            var isClickInsideSidebar = sidebar.contains(event.target);
 
-        // Set themes
-        root.setThemes([
-            am5themes_Animated.new(root),
-            am5themes_Responsive.new(root)
-        ]);
-
-        // Create chart
-        const chart = root.container.children.push(am5xy.XYChart.new(root, {
-            panX: false,
-            panY: false,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            paddingLeft: 0
-        }));
-
-        // Add cursor
-        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
-            behavior: "zoomX"
-        }));
-        cursor.lineY.set("visible", false);
-
-        // Create axes
-        const xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererX.new(root, {
-                minGridDistance: 20
-            }),
-            tooltip: am5.Tooltip.new(root, {})
-        }));
-
-        const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererY.new(root, {})
-        }));
-
-        // Add series
-        const series = chart.series.push(am5xy.ColumnSeries.new(root, {
-            name: "Word Count",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "count",
-            valueXField: "word_count",
-            tooltip: am5.Tooltip.new(root, {
-                labelText: "{valueY}"
-            })
-        }));
-
-        series.columns.template.setAll({
-            strokeOpacity: 0,
-            width: 10, // Make bars thinner
-            cornerRadiusBR: 3,
-            cornerRadiusTR: 3,
-            minHeight: 10 // Minimum height for better visibility
+            if (!isClickInsideSidebar) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    dropdowns[i].style.display = "none";
+                }
+            }
         });
-
-        // Add scrollbar
-        chart.set("scrollbarX", am5.Scrollbar.new(root, {
-            orientation: "horizontal"
-        }));
-
-        // Fetch data from the Flask API
-        async function fetchData() {
-            try {
-                const response = await fetch('http://127.0.0.1:5000/articles_by_word_count');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Failed to fetch data:', error);
-            }
-        }
-
-        // Fetch and update data
-        function updateChart() {
-            fetchData().then(data => {
-                if (data) {
-                    // Transform data to be compatible with chart
-                    const formattedData = data.map(item => ({
-                        word_count: item._id,
-                        count: item.count
-                    }));
-
-                    xAxis.data.setAll(formattedData);
-                    series.data.setAll(formattedData);
-                } else {
-                    console.error('No data received from the API.');
-                }
-            });
-        }
-
-        // Initial load of data
-        updateChart();
-
-        // Make stuff animate on load
-        series.appear(1000);
-        chart.appear(1000, 100);
-    }); // end am5.ready()
     </script>
 
 </body>

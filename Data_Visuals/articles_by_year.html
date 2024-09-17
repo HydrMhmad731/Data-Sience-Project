@@ -1,169 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Visualization Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Al Mayadeen Data Dashboard - Word Cloud</title>
 
-    <!-- Chart Libraries -->
-    <script src="https://cdn.amcharts.com/lib/5/index.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/xy.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/percent.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/wc.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/hierarchy.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js" defer></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js" defer></script>
+    <!-- Font Awesome Link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- amCharts CDN -->
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f4f4f4;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: white;
+            color: #e67e22;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            z-index: 1000;
+            padding-top: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+        }
+
+        #homeBtn {
+            font-size: 24px;
+            color: #e67e22;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        #homeBtn i {
+            margin-right: 10px;
+        }
+
+        #homeBtn:hover {
+            color: #d35400;
+        }
+
+        #sidebar nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+
+        #sidebar .group-title {
+            padding: 15px 20px;
+            font-size: 18px;
+            color: #e67e22;
+            background-color: transparent;
+            margin: 0;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            text-align: left;
+            width: 100%;
+        }
+
+        #sidebar .group-title i {
+            margin-right: 10px;
+        }
+
+        #sidebar .group-title:hover {
+            background-color: #f9f9f9;
+            color: #d35400;
+        }
+
+        #sidebar .dropdown-content {
+            display: none;
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        #sidebar .dropdown-content li a {
+            color: #e67e22;
+            padding: 10px 20px;
+            background-color: transparent;
+            text-decoration: none;
+            display: block;
+            transition: color 0.3s ease;
+        }
+
+        #sidebar .dropdown-content li a:hover {
+            color: #d35400;
+        }
+
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            overflow: auto;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #7f8c8d;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        select {
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ff6600;
+            border-radius: 6px;
+            outline: none;
+            width: 200px;
+            margin-right: 15px;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            background-color: #ff6600;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #cc5200;
+        }
+
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
 </head>
+
 <body>
-    <header>
-        <h1>Data Visualization Dashboard</h1>
-    </header>
 
-    <nav>
-        <ul>
-            <li><a href="#chart1">Top Keywords (Word Cloud)</a></li>
-            <li><a href="#chart2">Top Authors (Bar Chart)</a></li>
-            <li><a href="#chart3">Articles by Date (Line Chart)</a></li>
-            <li><a href="#chart4">Articles by Word Count (Histogram)</a></li>
-            <li><a href="#chart5">Articles by Language (Pie Chart)</a></li>
-            <li><a href="#chart6">Articles by Category (Stacked Bar Chart)</a></li>
-            <li><a href="#chart7">Recent Articles (Table)</a></li>
-            <li><a href="#chart8">Articles by Keyword (Tag Cloud)</a></li>
-            <li><a href="#chart9">Articles by Author (Bar Chart)</a></li>
-            <li><a href="#chart10">Top Categories (Pyramid Chart)</a></li>
-            <li><a href="#chart11">Article Details</a></li>
-        </ul>
-    </nav>
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <button id="homeBtn" onclick="location.href='base.html'">
+            <i class="fas fa-home"></i> Home
+        </button>
+        <nav>
+            <ul>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group1')">
+                        <i class="fas fa-key"></i> Group 1: Keyword & Author Insights
+                    </button>
+                    <ul id="group1" class="dropdown-content">
+                        <li><a href="wordcloud.html"><i class="fas fa-cloud"></i> Top Keywords</a></li>
+                        <li><a href="top_authors.html"><i class="fas fa-user"></i> Top Authors</a></li>
+                        <li><a href="articles_by_keyword.html"><i class="fas fa-tag"></i> Articles by Keyword</a></li>
+                        <li><a href="articles_by_author.html"><i class="fas fa-user-tag"></i> Articles by Author</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group2')">
+                        <i class="fas fa-calendar"></i> Group 2: Time-based Trends
+                    </button>
+                    <ul id="group2" class="dropdown-content">
+                        <li><a href="articles_by_date.html"><i class="fas fa-calendar"></i> Articles by Date</a></li>
+                        <li><a href="articles_by_year.html"><i class="fas fa-calendar-alt"></i> Articles by Publication Year</a></li>
+                        <li><a href="articles_by_month.html"><i class="fas fa-calendar-day"></i> Articles by Published Month</a></li>
+                        <li><a href="recent_articles.html"><i class="fas fa-newspaper"></i> Recent Articles</a></li>
+                        <li><a href="articles_last_24_hours.html"><i class="fas fa-clock"></i> Articles Published in Last 24 Hours</a></li>
+                        <li><a href="most_popular_keywords.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last 7 Days</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group3')">
+                        <i class="fas fa-align-left"></i> Group 3: Content Characteristics
+                    </button>
+                    <ul id="group3" class="dropdown-content">
+                        <li><a href="word_count_distribution.html"><i class="fas fa-chart-bar"></i> Articles by Word Count</a></li>
+                        <li><a href="longest_articles.html"><i class="fas fa-file-alt"></i> Longest Articles</a></li>
+                        <li><a href="shortest_articles.html"><i class="fas fa-file-alt"></i> Shortest Articles</a></li>
+                        <li><a href="articles_with_specific_keyword_count.html"><i class="fas fa-key"></i> Articles with Specific Keyword Count</a></li>
+                        <li><a href="articles_by_title_length.html"><i class="fas fa-heading"></i> Articles by Length of Title</a></li>
+                        <li><a href="articles_by_word_count_range.html"><i class="fas fa-chart-histogram"></i> Articles by Word Count Range</a></li>
+                        <li><a href="articles_with_specific_text.html"><i class="fas fa-file-word"></i> Articles Containing Specific Text</a></li>
+                        <li><a href="articles_with_more_than_n_words.html"><i class="fas fa-text-width"></i> Articles with More than N Words</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group4')">
+                        <i class="fas fa-layer-group"></i> Group 4: Category & Language Insights
+                    </button>
+                    <ul id="group4" class="dropdown-content">
+                        <li><a href="articles_by_language.html"><i class="fas fa-language"></i> Articles by Language</a></li>
+                        <li><a href="articles_by_category.html"><i class="fas fa-layer-group"></i> Articles by Category</a></li>
+                        <li><a href="articles_by_coverage.html"><i class="fas fa-bars"></i> Articles by Coverage</a></li>
+                        <li><a href="top_categories.html"><i class="fas fa-chart-pie"></i> Top Categories</a></li>
+                        <li><a href="articles_grouped_by_coverage.html"><i class="fas fa-project-diagram"></i> Articles Grouped by Coverage</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group5')">
+                        <i class="fas fa-video"></i> Group 5: Media & Updates
+                    </button>
+                    <ul id="group5" class="dropdown-content">
+                        <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
+                        <li><a href="articles_with_images.html"><i class="fas fa-image"></i> Articles with Images</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_with_external_links.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
+                        <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
 
-    <main>
-        <!-- Chart 1: Top Keywords (Word Cloud) -->
-        <section id="chart1" class="chart-container">
-            <h2>Top Keywords (Word Cloud)</h2>
-            <div id="chartdiv1" class="chart-div"></div>
-        </section>
+    <!-- Main Content -->
+    <div id="main-content">
+        <div class="container">
+            <h1>Top Keywords Word Cloud</h1>
+            <p>This word cloud visualization displays the most frequently mentioned keywords in the articles.</p>
+            <div class="controls">
+            <select id="yearSelect">
+                <!-- Years will be populated here -->
+            </select>
+            <button id="updateButton">Apply</button>
+        </div>
+            <div id="chartdiv"></div>
+        </div>
+    </div>
 
-        <!-- Chart 2: Top Authors (Bar Chart) -->
-        <section id="chart2" class="chart-container">
-            <h2>Top Authors (Bar Chart)</h2>
-            <div id="chartdiv2" class="chart-div"></div>
-        </section>
+    <script>
+        // Toggle dropdown visibility
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            if (dropdown.style.display === "none" || dropdown.style.display === "") {
+                dropdown.style.display = "block";
+            } else {
+                dropdown.style.display = "none";
+            }
+        }
 
-        <!-- Chart 3: Articles by Date (Line Chart) -->
-        <section id="chart3" class="chart-container">
-            <h2>Articles by Date (Line Chart)</h2>
-            <div class="filters">
-                <label for="yearSelector">Year:</label>
-                <select id="yearSelector">
-                    <option value="">All Years</option>
-                    <!-- Options will be populated dynamically -->
-                </select>
+        let chart;
 
-                <label for="monthSelector">Month:</label>
-                <select id="monthSelector">
-                    <option value="">All Months</option>
-                    <!-- Options will be populated dynamically -->
-                </select>
+        // Initialize chart
+am5.ready(function() {
+    // Create root element
+    var root = am5.Root.new("chartdiv");
 
-                <button id="applyFilters">Apply Filters</button>
-                <button id="clearFilters">Clear Filters</button>
-            </div>
-            <div id="chartdiv3" class="chart-div"></div>
-        </section>
+    // Set themes
+    root.setThemes([
+        am5themes_Animated.new(root),
+        am5themes_Responsive.new(root)
+    ]);
 
-        <!-- Chart 4: Articles by Word Count (Histogram) -->
-        <section id="chart4" class="chart-container">
-            <h2>Articles by Word Count (Histogram)</h2>
-            <div id="chartdiv4" class="chart-div"></div>
-        </section>
+    // Create chart
+    var chart = root.container.children.push(am5xy.XYChart.new(root, {
+        panX: false,
+        panY: false,
+        wheelX: "panX",
+        wheelY: "zoomX",
+        paddingLeft: 0
+    }));
 
-        <!-- Chart 5: Articles by Language (Pie Chart) -->
-        <section id="chart5" class="chart-container">
-            <h2>Articles by Language (Pie Chart)</h2>
-            <div id="chartdiv5" class="chart-div"></div>
-        </section>
+    // Add cursor
+    var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+        behavior: "zoomX"
+    }));
+    cursor.lineY.set("visible", false);
 
-        <!-- Chart 6: Articles by Category (Stacked Bar Chart) -->
-        <section id="chart6" class="chart-container">
-            <h2>Articles by Category (Stacked Bar Chart)</h2>
-            <div id="chartdiv6" class="chart-div"></div>
-        </section>
+    // Create axes
+    var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+        categoryField: "month",
+        renderer: am5xy.AxisRendererX.new(root, {
+            grid: {
+                strokeOpacity: 0.1
+            }
+        }),
+        tooltip: am5.Tooltip.new(root, {})
+    }));
 
-        <!-- Chart 7: Recent Articles (Table) -->
-        <section id="chart7" class="chart-container">
-            <h2>Recent Articles (Table)</h2>
-            <div id="noArticles" style="display: none;">No recent articles available.</div>
-            <div id="chartdiv7" class="chart-div">
-                <table id="recentArticlesTable">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Date</th>
-                            <th>Author</th>
-                            <th>Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Rows will be populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+    var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+        renderer: am5xy.AxisRendererY.new(root, {})
+    }));
 
-        <!-- Chart 8: Articles by Keyword (Tag Cloud) -->
-        <section id="chart8" class="chart-container">
-            <h2>Articles by Keyword (Tag Cloud)</h2>
-            <div id="chartdiv8" class="chart-div"></div>
-        </section>
+    // Add series
+    var series = chart.series.push(am5xy.ColumnSeries.new(root, {
+        name: "Articles",
+        xAxis: xAxis,
+        yAxis: yAxis,
+        valueYField: "count",
+        categoryXField: "month",
+        tooltip: am5.Tooltip.new(root, {
+            labelText: "{valueY}"
+        })
+    }));
 
-        <!-- Chart 9: Articles by Author (Bar Chart) -->
-        <section id="chart9" class="chart-container">
-            <h2>Articles by Author (Bar Chart)</h2>
-            <div class="filters">
-                <label for="authorSelect">Select Author:</label>
-                <select id="authorSelect">
-                    <option value="">Select Author</option>
-                    <!-- Options will be populated dynamically -->
-                </select>
-                <button id="applyAuthorFilter">Apply Filter</button>
-            </div>
-            <div id="chartdiv9" class="chart-div"></div>
-        </section>
+    series.columns.template.setAll({ strokeOpacity: 0 });
 
-        <!-- Chart 10: Top Categories (Pyramid Chart) -->
-        <section id="chart10" class="chart-container">
-            <h2>Top Categories (Pyramid Chart)</h2>
-            <div id="chartdiv10" class="chart-div"></div>
-        </section>
+    // Function to fetch data and update chart
+    function updateChart() {
+        const year = document.getElementById('yearSelect').value;
+        if (!year) {
+            alert('Please select a year.');
+            return;
+        }
 
-        <!-- Chart 11: Article Details -->
-        <section id="chart11" class="chart-container">
-            <h2>Article Details</h2>
-            <div class="filters">
-                <label for="postidInput">Enter Post ID:</label>
-                <input type="text" id="postidInput" placeholder="Enter Post ID">
-                <button id="getArticleButton">Get Article</button>
-            </div>
-            <div id="articleDetails" class="chart-div" style="display: none;">
-                <table id="articleDetailsTable">
-                    <thead>
-                        <tr>
-                            <th>Title</th>
-                            <th>Keywords</th>
-                            <th>Publication Date</th>
-                            <th>Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Row will be populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+        fetch(`http://127.0.0.1:5000/articles_by_year/${year}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    return;
+                }
 
+                // Format data for chart
+                const chartData = data.map(item => ({
+                    month: `Month ${item.month}`,
+                    count: item.count
+                }));
 
-    <!-- Main Script -->
-    <script src="script.js" defer></script>
+                // Update chart data
+                series.data.setAll(chartData);
+                xAxis.data.setAll(chartData);
+                chart.appear(1000, 100);
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                alert('Error fetching data. Please try again later.');
+            });
+    }
+
+    // Populate year options
+    function populateYears() {
+        const yearSelect = document.getElementById('yearSelect');
+
+        // Add 2023 manually
+        const option2023 = document.createElement('option');
+        option2023.value = 2023;
+        option2023.textContent = 2023;
+        yearSelect.appendChild(option2023);
+
+        // Loop from 2024 onwards
+        for (let year = 2024; year <= new Date().getFullYear(); year++) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+    }
+
+    // Populate year options on initialization
+    populateYears();
+
+    // Apply button handler (this is key to replace the inline onclick)
+    document.getElementById('updateButton').addEventListener('click', updateChart);
+
+}); // end am5.ready()
+
+    </script>
+
 </body>
+
 </html>

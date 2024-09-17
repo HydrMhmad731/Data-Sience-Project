@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Articles by Published Month</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #inputForm {
+      margin-bottom: 20px;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      border: 2px solid #ffa500;
+    }
+
+    select, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 14px;
+      border-radius: 5px;
+      border: 1px solid #ffa500;
+    }
+
+    button {
+      background-color: #ffa500;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #ff8c00;
+    }
+
+    #chartdiv {
+      width: 100%;
+      height: 500px;
+    }
+  </style>
+
+  <!-- amCharts library scripts -->
+  <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+  <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+</head>
+<body>
+
+  <div id="inputForm">
+    <label for="year">Select Year:</label>
+    <select id="year">
+      <option value="2024">2024</option>
+      <option value="2023">2023</option>
+      <option value="2022">2022</option>
+      <!-- Add more years as needed -->
+    </select>
+
+    <label for="month">Select Month:</label>
+    <select id="month">
+      <option value="1">January</option>
+      <option value="2">February</option>
+      <option value="3">March</option>
+      <option value="4">April</option>
+      <option value="5">May</option>
+      <option value="6">June</option>
+      <option value="7">July</option>
+      <option value="8">August</option>
+      <option value="9">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
+    </select>
+
+    <button onclick="loadChart()">Show Data</button>
+  </div>
+
+  <div id="chartdiv"></div>
+
+  <script>
+    function loadChart() {
+      var year = document.getElementById('year').value;
+      var month = document.getElementById('month').value;
+
+      // Fetch data from Flask API for the selected year and month
+      fetch(`http://127.0.0.1:5000/articles_by_month/${year}/${month}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.message) {
+            alert(data.message);  // Handle error messages
+          } else {
+            generateChart(data);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching data:', error);
+          alert('Error fetching data. Please try again later.');
+        });
+    }
+
+    function generateChart(data) {
+      am5.ready(function () {
+        // Create chart root
+        var root = am5.Root.new("chartdiv");
+        root.setThemes([am5themes_Animated.new(root)]);
+
+        // Create chart
+        var chart = root.container.children.push(am5xy.XYChart.new(root, {
+          layout: root.verticalLayout
+        }));
+
+        // Create X and Y axes
+        var xAxis = chart.xAxes.push(am5xy.DateAxis.new(root, {
+          baseInterval: { timeUnit: "day", count: 1 },  // Display data day by day
+          renderer: am5xy.AxisRendererX.new(root, {})
+        }));
+
+        var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+          renderer: am5xy.AxisRendererY.new(root, {})
+        }));
+
+        // Create series for the data
+        var series = chart.series.push(am5xy.LineSeries.new(root, {
+          name: "Articles",
+          xAxis: xAxis,
+          yAxis: yAxis,
+          valueYField: "count",
+          valueXField: "published_time",
+          tooltip: am5.Tooltip.new(root, {
+            labelText: "{valueY} articles"
+          })
+        }));
+
+        // Set the data for the chart
+        series.data.setAll(data.map(item => ({
+          published_time: new Date(item.published_time).getTime(),  // Convert date to timestamp
+          count: item.count  // Article count
+        })));
+
+        // Animate the series
+        series.appear(1000);
+        chart.appear(1000, 100);
+      });
+    }
+  </script>
+
+</body>
+</html>

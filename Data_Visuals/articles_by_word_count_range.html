@@ -4,15 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Al Mayadeen Data Dashboard - Word Cloud</title>
+    <title>Articles by Word Count Range</title>
 
     <!-- Font Awesome Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- amCharts CDN -->
-    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+      <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -142,6 +141,32 @@
             font-size: 18px;
             line-height: 1.6;
         }
+         #controls {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    #wordCountMin, #wordCountMax {
+      width: 100px;
+      padding: 5px;
+      margin-right: 10px;
+    }
+    #searchButton {
+      padding: 5px 15px;
+      background-color: orange;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    #searchButton:hover {
+      background-color: darkorange;
+    }
+    #loadingMessage {
+      display: none;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: gray;
+    }
 
         #chartdiv {
             width: 100%;
@@ -179,8 +204,9 @@
                         <li><a href="articles_by_year.html"><i class="fas fa-calendar-alt"></i> Articles by Publication Year</a></li>
                         <li><a href="articles_by_month.html"><i class="fas fa-calendar-day"></i> Articles by Published Month</a></li>
                         <li><a href="recent_articles.html"><i class="fas fa-newspaper"></i> Recent Articles</a></li>
+                        <li><a href="articles_updated_after_publication.html"><i class="fas fa-calendar-day"></i> articles_updated_after_publication</a></li>
                         <li><a href="articles_last_24_hours.html"><i class="fas fa-clock"></i> Articles Published in Last 24 Hours</a></li>
-                        <li><a href="most_popular_keywords.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last 7 Days</a></li>
+                        <li><a href="most_popular_keywords_last_x_days.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last x Days</a></li>
                     </ul>
                 </li>
                 <li>
@@ -216,9 +242,9 @@
                     </button>
                     <ul id="group5" class="dropdown-content">
                         <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
-                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Images</a></li>
-                        <li><a href="articles_with_audio.html"><i class="fas fa-volume-up"></i> Articles with Audio</a></li>
-                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
+                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Thumbnail</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles by keyword count</a></li>
                         <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
                     </ul>
                 </li>
@@ -231,6 +257,15 @@
         <div class="container">
             <h1>Top Keywords Word Cloud</h1>
             <p>This word cloud visualization displays the most frequently mentioned keywords in the articles.</p>
+           <div id="controls">
+            <label for="wordCountMin">Min Word Count:</label>
+            <input type="number" id="wordCountMin" min="0">
+            <label for="wordCountMax">Max Word Count:</label>
+            <input type="number" id="wordCountMax" min="0">
+            <button id="searchButton">Search</button>
+          </div>
+          <div id="loadingMessage">Loading data...</div>
+
             <div id="chartdiv"></div>
         </div>
     </div>
@@ -246,106 +281,107 @@
             }
         }
 
-        am5.ready(async function() {
-        // Create root element
-        const root = am5.Root.new("chartdiv");
+        am5.ready(function() {
+      // Create root element
+      var root = am5.Root.new("chartdiv");
 
-        // Set themes
-        root.setThemes([
-            am5themes_Animated.new(root),
-            am5themes_Responsive.new(root)
-        ]);
+      // Set themes
+      root.setThemes([am5themes_Animated.new(root)]);
 
-        // Create chart
-        const chart = root.container.children.push(am5xy.XYChart.new(root, {
-            panX: false,
-            panY: false,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            paddingLeft: 0
-        }));
+      // Create chart
+      var chart = root.container.children.push(am5xy.XYChart.new(root, {
+        panX: true,
+        panY: true,
+        wheelX: "panX",
+        wheelY: "zoomX",
+        paddingLeft: 0
+      }));
 
-        // Add cursor
-        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
-            behavior: "zoomX"
-        }));
-        cursor.lineY.set("visible", false);
+      // Add cursor
+      var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+        behavior: "zoomX"
+      }));
+      cursor.lineY.set("visible", false);
 
-        // Create axes
-        const xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererX.new(root, {
-                minGridDistance: 20
-            }),
-            tooltip: am5.Tooltip.new(root, {})
-        }));
+      // Create axes
+      var xAxis = chart.xAxes.push(am5xy.CategoryAxis.new(root, {
+        categoryField: "title",
+        renderer: am5xy.AxisRendererX.new(root, {
+          minGridDistance: 30
+        })
+      }));
 
-        const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererY.new(root, {})
-        }));
+      var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+        renderer: am5xy.AxisRendererY.new(root, {})
+      }));
 
-        // Add series
-        const series = chart.series.push(am5xy.ColumnSeries.new(root, {
-            name: "Word Count",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "count",
-            valueXField: "word_count",
-            tooltip: am5.Tooltip.new(root, {
-                labelText: "{valueY}"
-            })
-        }));
+      // Add series
+      var series = chart.series.push(am5xy.ColumnSeries.new(root, {
+        name: "Articles",
+        xAxis: xAxis,
+        yAxis: yAxis,
+        valueYField: "word_count",
+        categoryXField: "title",
+        tooltip: am5.Tooltip.new(root, {
+          labelText: "{categoryX}: {valueY}"
+        })
+      }));
 
-        series.columns.template.setAll({
-            strokeOpacity: 0,
-            width: 10, // Make bars thinner
-            cornerRadiusBR: 3,
-            cornerRadiusTR: 3,
-            minHeight: 10 // Minimum height for better visibility
-        });
-
-        // Add scrollbar
-        chart.set("scrollbarX", am5.Scrollbar.new(root, {
-            orientation: "horizontal"
-        }));
-
-        // Fetch data from the Flask API
-        async function fetchData() {
-            try {
-                const response = await fetch('http://127.0.0.1:5000/articles_by_word_count');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                console.error('Failed to fetch data:', error);
+      // Function to fetch and update chart data
+      function updateChart(minWordCount, maxWordCount) {
+        document.getElementById('loadingMessage').style.display = 'block'; // Show loading message
+        fetch(`http://127.0.0.1:5000/articles_by_word_count_range/${minWordCount}/${maxWordCount}`)
+          .then(response => response.json())
+          .then(data => {
+            if (!Array.isArray(data)) {
+              console.error('Unexpected response format:', data);
+              return;
             }
+
+            // Clear existing chart data
+            series.data.clear();
+            xAxis.data.clear();
+
+            if (data.length === 0) {
+              document.getElementById('loadingMessage').textContent = 'No data found for the selected range.';
+              return;
+            }
+
+            // Prepare data for chart
+            const chartData = data.map(article => ({
+              title: article.title,
+              word_count: article.word_count
+            }));
+
+            // Set data to series
+            series.data.setAll(chartData);
+            xAxis.data.setAll(chartData);
+            document.getElementById('loadingMessage').style.display = 'none'; // Hide loading message
+          })
+          .catch(error => {
+            console.error('Error fetching data:', error);
+            document.getElementById('loadingMessage').textContent = 'Error loading data.';
+          });
+      }
+
+      // Event listener for the search button
+      document.getElementById('searchButton').addEventListener('click', function() {
+        var minWordCount = parseInt(document.getElementById('wordCountMin').value);
+        var maxWordCount = parseInt(document.getElementById('wordCountMax').value);
+        if (isNaN(minWordCount) || isNaN(maxWordCount)) {
+          alert('Please enter valid word counts.');
+          return;
         }
-
-        // Fetch and update data
-        function updateChart() {
-            fetchData().then(data => {
-                if (data) {
-                    // Transform data to be compatible with chart
-                    const formattedData = data.map(item => ({
-                        word_count: item._id,
-                        count: item.count
-                    }));
-
-                    xAxis.data.setAll(formattedData);
-                    series.data.setAll(formattedData);
-                } else {
-                    console.error('No data received from the API.');
-                }
-            });
+        if (minWordCount > maxWordCount) {
+          alert('Minimum word count cannot be greater than maximum word count.');
+          return;
         }
+        updateChart(minWordCount, maxWordCount);
+      });
 
-        // Initial load of data
-        updateChart();
-
-        // Make stuff animate on load
-        series.appear(1000);
-        chart.appear(1000, 100);
+      // Make stuff animate on load
+      series.appear(1000);
+      chart.appear(1000, 100);
     }); // end am5.ready()
     </script>
 

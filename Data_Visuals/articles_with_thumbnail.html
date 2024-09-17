@@ -9,10 +9,9 @@
     <!-- Font Awesome Link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- amCharts CDN -->
-    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+      <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Responsive.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -179,6 +178,7 @@
                         <li><a href="articles_by_year.html"><i class="fas fa-calendar-alt"></i> Articles by Publication Year</a></li>
                         <li><a href="articles_by_month.html"><i class="fas fa-calendar-day"></i> Articles by Published Month</a></li>
                         <li><a href="recent_articles.html"><i class="fas fa-newspaper"></i> Recent Articles</a></li>
+                        <li><a href="articles_updated_after_publication.html"><i class="fas fa-calendar-day"></i> articles_updated_after_publication</a></li>
                         <li><a href="articles_last_24_hours.html"><i class="fas fa-clock"></i> Articles Published in Last 24 Hours</a></li>
                         <li><a href="most_popular_keywords.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last 7 Days</a></li>
                     </ul>
@@ -216,9 +216,9 @@
                     </button>
                     <ul id="group5" class="dropdown-content">
                         <li><a href="articles_with_video.html"><i class="fas fa-video"></i> Articles with Video</a></li>
-                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Images</a></li>
-                        <li><a href="articles_with_audio.html"><i class="fas fa-volume-up"></i> Articles with Audio</a></li>
-                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles with External Links</a></li>
+                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Thumbnail</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles by keyword count</a></li>
                         <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
                     </ul>
                 </li>
@@ -252,100 +252,105 @@
 
         // Set themes
         root.setThemes([
-            am5themes_Animated.new(root),
-            am5themes_Responsive.new(root)
+            am5themes_Animated.new(root)
         ]);
 
         // Create chart
-        const chart = root.container.children.push(am5xy.XYChart.new(root, {
-            panX: false,
-            panY: false,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            paddingLeft: 0
+        const chart = root.container.children.push(am5percent.PieChart.new(root, {
+            radius: am5.percent(50),  // Set to 50% of container height/width
+            innerRadius: am5.percent(0) // Set to 0% to remove the donut effect for testing
         }));
 
-        // Add cursor
-        const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
-            behavior: "zoomX"
-        }));
-        cursor.lineY.set("visible", false);
-
-        // Create axes
-        const xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererX.new(root, {
-                minGridDistance: 20
-            }),
-            tooltip: am5.Tooltip.new(root, {})
+        // Create series
+        const series = chart.series.push(am5percent.PieSeries.new(root, {
+            valueField: "value",
+            categoryField: "category",
+            endAngle: 360 // Full 360 degrees for the chart
         }));
 
-        const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
-            renderer: am5xy.AxisRendererY.new(root, {})
-        }));
-
-        // Add series
-        const series = chart.series.push(am5xy.ColumnSeries.new(root, {
-            name: "Word Count",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "count",
-            valueXField: "word_count",
-            tooltip: am5.Tooltip.new(root, {
-                labelText: "{valueY}"
-            })
-        }));
-
-        series.columns.template.setAll({
-            strokeOpacity: 0,
-            width: 10, // Make bars thinner
-            cornerRadiusBR: 3,
-            cornerRadiusTR: 3,
-            minHeight: 10 // Minimum height for better visibility
+        // Customize labels and tooltips
+        series.labels.template.setAll({
+            text: "{category}: {value}",
+            radius: 40,
+            fill: am5.color(0x000000),
+            fontSize: "1em",
+            adapter: {
+                text: function(text, target) {
+                    // Add category and value to the labels
+                    return target.dataItem ? `${target.dataItem.category}: ${target.dataItem.value}` : text;
+                }
+            }
         });
 
-        // Add scrollbar
-        chart.set("scrollbarX", am5.Scrollbar.new(root, {
-            orientation: "horizontal"
-        }));
+        series.slices.template.setAll({
+            tooltipText: "{category}: {value}",
+            cornerRadius: 10,
+            stroke: am5.color(0xffffff),
+            strokeWidth: 2,
+            states: {
+                hover: {
+                    properties: {
+                        scale: 1.1
+                    }
+                }
+            }
+        });
 
-        // Fetch data from the Flask API
+        // Add data
         async function fetchData() {
             try {
-                const response = await fetch('http://127.0.0.1:5000/articles_by_word_count');
+                const response = await fetch('http://127.0.0.1:5000/articles_with_thumbnail');
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 const data = await response.json();
+                console.log("Fetched Data: ", data);  // Debug: Log data fetched from the API
                 return data;
             } catch (error) {
                 console.error('Failed to fetch data:', error);
             }
         }
 
-        // Fetch and update data
-        function updateChart() {
-            fetchData().then(data => {
-                if (data) {
-                    // Transform data to be compatible with chart
-                    const formattedData = data.map(item => ({
-                        word_count: item._id,
-                        count: item.count
-                    }));
+        // Fetch data and update the chart
+        fetchData().then(data => {
+            if (data && data.length > 0) {
+                // Count articles with and without thumbnails
+                const counts = {
+                    withThumbnail: 0,
+                    withoutThumbnail: 0
+                };
 
-                    xAxis.data.setAll(formattedData);
-                    series.data.setAll(formattedData);
-                } else {
-                    console.error('No data received from the API.');
-                }
-            });
-        }
+                data.forEach(article => {
+                    if (article.thumbnail) {
+                        counts.withThumbnail += 1;
+                    } else {
+                        counts.withoutThumbnail += 1;
+                    }
+                });
 
-        // Initial load of data
-        updateChart();
+                // Prepare data for the pie chart
+                const formattedData = [
+                    { category: "With Thumbnail", value: counts.withThumbnail },
+                    { category: "Without Thumbnail", value: counts.withoutThumbnail }
+                ];
 
-        // Make stuff animate on load
-        series.appear(1000);
+                console.log("Formatted Chart Data: ", formattedData);  // Debug: Log formatted chart data
+                series.data.setAll(formattedData);
+            } else {
+                console.error('No valid data received from the API or data is empty.');
+            }
+        });
+
+        // Customize colors
+        series.colors.list = [
+            am5.color(0x00aaff), // Color for articles with thumbnails
+            am5.color(0xff5722)  // Color for articles without thumbnails
+        ];
+
+        // Add animation to the chart
+        series.appear(1000, 100);
         chart.appear(1000, 100);
+
     }); // end am5.ready()
     </script>
 
