@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Al Mayadeen Data Dashboard - Word Cloud</title>
+
+    <!-- Font Awesome Link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- amCharts CDN -->
+      <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/percent.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f4f4f4;
+        }
+
+        #sidebar {
+            width: 250px;
+            background-color: white;
+            color: #e67e22;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            z-index: 1000;
+            padding-top: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+        }
+
+        #homeBtn {
+            font-size: 24px;
+            color: #e67e22;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        #homeBtn i {
+            margin-right: 10px;
+        }
+
+        #homeBtn:hover {
+            color: #d35400;
+        }
+
+        #sidebar nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #sidebar nav ul li {
+            margin-bottom: 10px;
+        }
+
+        #sidebar .group-title {
+            padding: 15px 20px;
+            font-size: 18px;
+            color: #e67e22;
+            background-color: transparent;
+            margin: 0;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border: none;
+            display: flex;
+            align-items: center;
+            text-align: left;
+            width: 100%;
+        }
+
+        #sidebar .group-title i {
+            margin-right: 10px;
+        }
+
+        #sidebar .group-title:hover {
+            background-color: #f9f9f9;
+            color: #d35400;
+        }
+
+        #sidebar .dropdown-content {
+            display: none;
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        #sidebar .dropdown-content li a {
+            color: #e67e22;
+            padding: 10px 20px;
+            background-color: transparent;
+            text-decoration: none;
+            display: block;
+            transition: color 0.3s ease;
+        }
+
+        #sidebar .dropdown-content li a:hover {
+            color: #d35400;
+        }
+
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            margin-left: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #ffffff;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            overflow: auto;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        h1 {
+            color: #e67e22;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #7f8c8d;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        #chartdiv {
+            width: 100%;
+            height: 500px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+     <div id="sidebar">
+        <button id="homeBtn" onclick="location.href='base.html'">
+            <i class="fas fa-home"></i> Home
+        </button>
+        <nav>
+            <ul>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group1')">
+                        <i class="fas fa-key"></i> Group 1: Keyword & Author Insights
+                    </button>
+                    <ul id="group1" class="dropdown-content">
+                        <li><a href="wordcloud.html"><i class="fas fa-cloud"></i> Top Keywords</a></li>
+                        <li><a href="top_authors.html"><i class="fas fa-user"></i> Top Authors</a></li>
+                        <li><a href="articles_by_keyword.html"><i class="fas fa-tag"></i> Articles by Keyword</a></li>
+                        <li><a href="articles_by_author.html"><i class="fas fa-user-tag"></i> Articles by Author</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group2')">
+                        <i class="fas fa-calendar"></i> Group 2: Time-based Trends
+                    </button>
+                    <ul id="group2" class="dropdown-content">
+                        <li><a href="articles_by_date.html"><i class="fas fa-calendar"></i> Articles by Date</a></li>
+                        <li><a href="articles_by_year.html"><i class="fas fa-calendar-alt"></i> Articles by Publication Year</a></li>
+                        <li><a href="articles_by_month.html"><i class="fas fa-calendar-day"></i> Articles by Published Month</a></li>
+                        <li><a href="recent_articles.html"><i class="fas fa-newspaper"></i> Recent Articles</a></li>
+                        <li><a href="articles_updated_after_publication.html"><i class="fas fa-calendar-day"></i> articles_updated_after_publication</a></li>
+                        <li><a href="articles_last_24_hours.html"><i class="fas fa-clock"></i> Articles Published in Last 24 Hours</a></li>
+                        <li><a href="most_popular_keywords_last_x_days.html"><i class="fas fa-chart-line"></i> Most Popular Keywords in the Last x Days</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group3')">
+                        <i class="fas fa-align-left"></i> Group 3: Content Characteristics
+                    </button>
+                    <ul id="group3" class="dropdown-content">
+                        <li><a href="word_count_distribution.html"><i class="fas fa-chart-bar"></i> Articles by Word Count</a></li>
+                        <li><a href="longest_articles.html"><i class="fas fa-file-alt"></i> Longest Articles</a></li>
+                        <li><a href="shortest_articles.html"><i class="fas fa-file-alt"></i> Shortest Articles</a></li>
+                        <li><a href="articles_with_specific_keyword_count.html"><i class="fas fa-key"></i> Articles with Specific Keyword Count</a></li>
+                        <li><a href="articles_by_specific_date.html"><i class="fas fa-heading"></i> Articles By Specific Date</a></li>
+                        <li><a href="articles_by_word_count_range.html"><i class="fas fa-chart-histogram"></i> Articles by Word Count Range</a></li>
+                        <li><a href="articles_with_specific_text.html"><i class="fas fa-file-word"></i> Articles Containing Specific Text</a></li>
+                        <li><a href="articles_with_more_than_n_words.html"><i class="fas fa-text-width"></i> Articles with More than N Words</a></li>
+                        <li><a href="articles_by_length_of_title.html"><i class="fas fa-text-width"></i> Articles by Length of Title</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group4')">
+                        <i class="fas fa-layer-group"></i> Group 4: Category & Language Insights
+                    </button>
+                    <ul id="group4" class="dropdown-content">
+                        <li><a href="articles_by_language.html"><i class="fas fa-language"></i> Articles by Language</a></li>
+                        <li><a href="articles_by_category.html"><i class="fas fa-layer-group"></i> Articles by Category</a></li>
+                        <li><a href="articles_by_coverage.html"><i class="fas fa-bars"></i> Articles by Coverage</a></li>
+                        <li><a href="top_categories.html"><i class="fas fa-chart-pie"></i> Top Categories</a></li>
+                        <li><a href="articles_grouped_by_coverage.html"><i class="fas fa-project-diagram"></i> Articles Grouped by Coverage</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group5')">
+                        <i class="fas fa-video"></i> Group 5: Media & Updates
+                    </button>
+                    <ul id="group5" class="dropdown-content">
+                        <li><a href="articles_with_thumbnail.html"><i class="fas fa-image"></i> Articles with Thumbnail</a></li>
+                        <li><a href="article_details.html"><i class="fas fa-volume-up"></i> Article Details</a></li>
+                        <li><a href="articles_by_keyword_count.html"><i class="fas fa-link"></i> Articles by keyword count</a></li>
+                        <li><a href="most_recently_updated_articles.html"><i class="fas fa-sync"></i> Most Recently Updated Articles</a></li>
+                    </ul>
+                </li>
+                <li>
+                    <button class="group-title" onclick="toggleDropdown('group6')">
+                        <i class="fas fa-chart-line"></i> Group 6: Analytics
+                    </button>
+                    <ul id="group6" class="dropdown-content">
+                        <li><a href="articles_by_per.html"><i class="fas fa-user"></i> Articles by Person</a></li>
+                        <li><a href="articles_by_loc.html"><i class="fas fa-map-marker-alt"></i> Article by Location</a></li>
+                        <li><a href="articles_by_org.html"><i class="fas fa-building"></i> Articles by Organization</a></li>
+                        <li><a href="top_entities.html"><i class="fas fa-sync"></i> Top Entities in Articles</a></li>
+                        <li><a href="sentiment_trend.html"><i class="fas fa-sync"></i> Sentiment Trends of Articles</a></li>
+                        <li><a href="keywords_trend.html"><i class="fas fa-sync"></i> Keywords Trend of Articles</a></li>
+                        <li><a href="entity_trend.html"><i class="fas fa-sync"></i>Article's entity trend</a></li>
+                        <li><a href="Articles_Sentiment.html"><i class="fas fa-sync"></i> Sentiments in Articles</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content">
+        <div class="container">
+            <h1>Top Keywords Word Cloud</h1>
+            <p>This word cloud visualization displays the most frequently mentioned keywords in the articles.</p>
+            <div id="chartdiv"></div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle dropdown visibility
+        function toggleDropdown(id) {
+            const dropdown = document.getElementById(id);
+            if (dropdown.style.display === "none" || dropdown.style.display === "") {
+                dropdown.style.display = "block";
+            } else {
+                dropdown.style.display = "none";
+            }
+        }
+
+        am5.ready(async function() {
+        // Create root element
+        const root = am5.Root.new("chartdiv");
+
+        // Set themes
+        root.setThemes([
+            am5themes_Animated.new(root)
+        ]);
+
+        // Create chart
+        const chart = root.container.children.push(am5percent.PieChart.new(root, {
+            radius: am5.percent(50),  // Set to 50% of container height/width
+            innerRadius: am5.percent(0) // Set to 0% to remove the donut effect for testing
+        }));
+
+        // Create series
+        const series = chart.series.push(am5percent.PieSeries.new(root, {
+            valueField: "value",
+            categoryField: "category",
+            endAngle: 360 // Full 360 degrees for the chart
+        }));
+
+        // Customize labels and tooltips
+        series.labels.template.setAll({
+            text: "{category}: {value}",
+            radius: 40,
+            fill: am5.color(0x000000),
+            fontSize: "1em",
+            adapter: {
+                text: function(text, target) {
+                    // Add category and value to the labels
+                    return target.dataItem ? `${target.dataItem.category}: ${target.dataItem.value}` : text;
+                }
+            }
+        });
+
+        series.slices.template.setAll({
+            tooltipText: "{category}: {value}",
+            cornerRadius: 10,
+            stroke: am5.color(0xffffff),
+            strokeWidth: 2,
+            states: {
+                hover: {
+                    properties: {
+                        scale: 1.1
+                    }
+                }
+            }
+        });
+
+        // Add data
+        async function fetchData() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/articles_with_thumbnail');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                console.log("Fetched Data: ", data);  // Debug: Log data fetched from the API
+                return data;
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+            }
+        }
+
+        // Fetch data and update the chart
+        fetchData().then(data => {
+            if (data && data.length > 0) {
+                // Count articles with and without thumbnails
+                const counts = {
+                    withThumbnail: 0,
+                    withoutThumbnail: 0
+                };
+
+                data.forEach(article => {
+                    if (article.thumbnail) {
+                        counts.withThumbnail += 1;
+                    } else {
+                        counts.withoutThumbnail += 1;
+                    }
+                });
+
+                // Prepare data for the pie chart
+                const formattedData = [
+                    { category: "With Thumbnail", value: counts.withThumbnail },
+                    { category: "Without Thumbnail", value: counts.withoutThumbnail }
+                ];
+
+                console.log("Formatted Chart Data: ", formattedData);  // Debug: Log formatted chart data
+                series.data.setAll(formattedData);
+            } else {
+                console.error('No valid data received from the API or data is empty.');
+            }
+        });
+
+        // Customize colors
+        series.colors.list = [
+            am5.color(0x00aaff), // Color for articles with thumbnails
+            am5.color(0xff5722)  // Color for articles without thumbnails
+        ];
+
+        // Add animation to the chart
+        series.appear(1000, 100);
+        chart.appear(1000, 100);
+
+    }); // end am5.ready()
+    </script>
+
+</body>
+
+</html>
